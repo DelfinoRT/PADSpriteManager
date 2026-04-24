@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PAD Labs</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      color: #e9ebff;
+      background:
+        radial-gradient(800px 500px at 10% 10%, rgba(78, 102, 221, 0.35), transparent 60%),
+        radial-gradient(700px 400px at 90% 85%, rgba(56, 167, 137, 0.28), transparent 55%),
+        linear-gradient(160deg, #10142a 0%, #0d1124 45%, #090d1b 100%);
+      display: grid;
+      place-items: center;
+      padding: 24px;
+    }
+    .shell {
+      width: min(980px, 100%);
+      background: rgba(18, 24, 50, 0.72);
+      border: 1px solid #2e386f;
+      border-radius: 16px;
+      padding: 28px;
+      box-shadow: 0 16px 50px rgba(0, 0, 0, 0.35);
+    }
+    h1 {
+      font-size: 30px;
+      color: #b7c4ff;
+      letter-spacing: 0.4px;
+      margin-bottom: 8px;
+    }
+    p {
+      color: #9ca7db;
+      margin-bottom: 22px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 14px;
+    }
+    .card {
+      display: block;
+      text-decoration: none;
+      color: inherit;
+      background: linear-gradient(165deg, #181f44 0%, #131a39 100%);
+      border: 1px solid #344082;
+      border-radius: 12px;
+      padding: 18px;
+      transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+      min-height: 170px;
+    }
+    .card:hover {
+      transform: translateY(-2px);
+      border-color: #5d70f4;
+      box-shadow: 0 10px 24px rgba(33, 53, 165, 0.25);
+    }
+    .badge {
+      display: inline-block;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      border: 1px solid #4a5ac8;
+      color: #a8b4ff;
+      border-radius: 999px;
+      padding: 3px 8px;
+      margin-bottom: 10px;
+    }
+    .badge.wip {
+      border-color: #4c7d66;
+      color: #9de3c3;
+    }
+    .title {
+      font-size: 22px;
+      margin-bottom: 8px;
+      color: #dbe2ff;
+    }
+    .desc {
+      color: #a3addc;
+      line-height: 1.45;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <h1>PAD Labs</h1>
+    <p>Select which workspace you want to open.</p>
+
+    <section class="grid">
+      <a class="card" href="/outfits">
+        <span class="badge">Available</span>
+        <div class="title">Outfit Lab</div>
+        <div class="desc">Open the current outfit sprite manager and continue creating layered outfit sheets.</div>
+      </a>
+
+      <a class="card" href="/items">
+        <span class="badge wip">Work In Progress</span>
+        <div class="title">Items Lab</div>
+        <div class="desc">Item tooling is being built and is not available yet.</div>
+      </a>
+    </section>
+  </main>
+</body>
+</html>

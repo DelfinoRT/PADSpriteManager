@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Outfits Lab</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: radial-gradient(circle at 20% 10%, #1b1e3f, #0e1022 55%, #090b18 100%);
+      color: #d5d8ef;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      min-height: 100vh;
+    }
+    .wrap {
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 18px;
+    }
+    .card {
+      background: #161938;
+      border: 1px solid #2a2f5c;
+      border-radius: 10px;
+      padding: 14px;
+      margin-bottom: 14px;
+    }
+    h1 {
+      font-size: 20px;
+      color: #9fb3ff;
+      margin-bottom: 10px;
+    }
+    .muted {
+      color: #8d93b8;
+      font-size: 13px;
+      margin-bottom: 8px;
+    }
+    .controls {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    label {
+      font-size: 13px;
+      color: #aeb4d8;
+    }
+    input[type=number], select, input[type=text] {
+      margin-left: 6px;
+      background: #0f1230;
+      border: 1px solid #323a75;
+      color: #d5d8ef;
+      border-radius: 6px;
+      padding: 6px 8px;
+    }
+    input[type=number] { width: 78px; }
+    .btn {
+      background: #3340a8;
+      border: none;
+      color: #fff;
+      border-radius: 6px;
+      padding: 8px 12px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    .btn:hover { background: #4454d1; }
+    .btn.secondary { background: #2a2f5c; color: #d0d4f2; }
+    .btn.danger { background: #7a2d42; }
+    .upload-zone {
+      border: 2px dashed #394392;
+      border-radius: 10px;
+      padding: 24px;
+      text-align: center;
+      cursor: pointer;
+      color: #7d85bd;
+    }
+    .upload-zone:hover, .upload-zone.dragover {
+      border-color: #5d70f4;
+      background: rgba(93,112,244,0.08);
+      color: #b2bcff;
+    }
+    .notice {
+      margin-top: 8px;
+      padding: 8px 10px;
+      border-radius: 6px;
+      font-size: 13px;
+      border: 1px solid;
+    }
+    .notice.info { background: #1b2945; border-color: #375988; color: #9ac2f6; }
+    .notice.ok { background: #1b3a27; border-color: #3d7a54; color: #9fe4b9; }
+    .notice.err { background: #41202b; border-color: #7b3449; color: #ff9ab1; }
+    .list {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .item {
+      background: #0e1230;
+      border: 1px solid #2b346d;
+      border-radius: 6px;
+      padding: 6px;
+      text-align: center;
+    }
+    .item img { width: 100%; height: 68px; object-fit: contain; image-rendering: pixelated; }
+    .item div { font-size: 10px; color: #8f98cc; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .colors {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(140px, 1fr));
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .color-box {
+      background: #0e1230;
+      border: 1px solid #2b346d;
+      border-radius: 6px;
+      padding: 8px;
+    }
+    .color-box input[type=color] {
+      width: 100%;
+      height: 32px;
+      border: 1px solid #2b346d;
+      border-radius: 5px;
+      background: transparent;
+      margin-top: 6px;
+      margin-bottom: 6px;
+    }
+    .preview {
+      margin-top: 10px;
+      text-align: center;
+    }
+    .preview img {
+      max-width: 100%;
+      border: 1px solid #2b346d;
+      border-radius: 6px;
+      image-rendering: pixelated;
+      background: repeating-conic-gradient(#1c2148 0% 25%, #12173a 0% 50%) 0 0 / 14px 14px;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Outfits Lab</h1>
+    <p class="muted">Workflow: upload the 3 sprite sheets where each sheet is 4 columns × 5 rows (row1 base, row2-4 parts). Each sheet becomes one output row.</p>
+
+    <div class="card">
+      <div class="controls">
+        <button class="btn secondary" onclick="clearSheets()">Clear Sheets</button>
+      </div>
+
+      <div class="upload-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
+        <input type="file" id="file-input" multiple accept="image/*" style="display:none">
+        <p>Click or drop 4x5 sprite sheets here</p>
+      </div>
+      <div id="notices"></div>
+      <div class="list" id="sheet-list"></div>
+    </div>
+
+    <div class="card" id="color-card">
+      <div class="colors">
+        <div class="color-box">
+          <label>Red</label>
+          <input type="color" id="cp-part1" value="#ff0000" oninput="syncText('part1')">
+          <input type="text" id="ct-part1" value="#ff0000" maxlength="7" oninput="syncPicker('part1')">
+        </div>
+        <div class="color-box">
+          <label>Green</label>
+          <input type="color" id="cp-part2" value="#00ff00" oninput="syncText('part2')">
+          <input type="text" id="ct-part2" value="#00ff00" maxlength="7" oninput="syncPicker('part2')">
+        </div>
+        <div class="color-box">
+          <label>Blue</label>
+          <input type="color" id="cp-part3" value="#0000ff" oninput="syncText('part3')">
+          <input type="text" id="ct-part3" value="#0000ff" maxlength="7" oninput="syncPicker('part3')">
+        </div>
+        <div class="color-box">
+          <label>Yellow</label>
+          <input type="color" id="cp-part4" value="#ffff00" oninput="syncText('part4')">
+          <input type="text" id="ct-part4" value="#ffff00" maxlength="7" oninput="syncPicker('part4')">
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="controls">
+        <button class="btn secondary" onclick="buildOutfit(true)">Preview</button>
+        <button class="btn" onclick="buildOutfit(false)">Export PNG</button>
+      </div>
+      <div class="muted">Colored layout: B↑ C↑ B→ C→ B↓ C↓ B← C← (8 cols × 64px). One uploaded sheet = one row (64px tall).</div>
+      <div class="preview" id="preview-area" style="display:none">
+        <img id="preview-img" alt="Preview">
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function showNotice(msg, type = 'info') {
+      const n = document.createElement('div');
+      n.className = 'notice ' + type;
+      n.textContent = msg;
+      document.getElementById('notices').appendChild(n);
+    }
+
+    function clearNotices() {
+      document.getElementById('notices').innerHTML = '';
+    }
+
+    function syncText(part) {
+      document.getElementById('ct-' + part).value = document.getElementById('cp-' + part).value;
+    }
+
+    function syncPicker(part) {
+      const v = document.getElementById('ct-' + part).value;
+      if (/^#[0-9a-fA-F]{6}$/.test(v)) {
+        document.getElementById('cp-' + part).value = v;
+      }
+    }
+
+    const FIXED_SPRITE_SIZE = 64;
+    const FIXED_MODE = 'outfit-colored';
+
+    function renderSheetList(items) {
+      const list = document.getElementById('sheet-list');
+      items.forEach(it => {
+        const d = document.createElement('div');
+        d.className = 'item';
+        d.innerHTML = `<img src="${it.thumb}"><div title="${it.name}">${it.name}</div>`;
+        list.appendChild(d);
+      });
+    }
+
+    async function uploadSheets(files) {
+      clearNotices();
+      const imgFiles = [...files].filter(f => f.type.startsWith('image/'));
+      if (!imgFiles.length) {
+        showNotice('No image files selected.', 'err');
+        return;
+      }
+
+      const fd = new FormData();
+      fd.append('sprite_size', String(FIXED_SPRITE_SIZE));
+      imgFiles.forEach(f => fd.append('files', f));
+
+      try {
+        const res = await fetch('/api/upload_sheets', { method: 'POST', body: fd });
+        const data = await res.json();
+        if (!res.ok) {
+          showNotice(data.error || 'Upload failed.', 'err');
+          return;
+        }
+        renderSheetList(data.added);
+        showNotice(`Uploaded ${data.added.length} sheet(s). Total rows: ${data.count}.`, 'ok');
+      } catch (e) {
+        showNotice('Upload failed: ' + e.message, 'err');
+      }
+    }
+
+    async function clearSheets() {
+      clearNotices();
+      try {
+        await fetch('/api/clear_sheets', { method: 'POST' });
+        document.getElementById('sheet-list').innerHTML = '';
+        document.getElementById('preview-area').style.display = 'none';
+        showNotice('Cleared uploaded sheets.', 'ok');
+      } catch (e) {
+        showNotice('Clear failed: ' + e.message, 'err');
+      }
+    }
+
+    async function buildOutfit(preview) {
+      clearNotices();
+      const payload = {
+        mode: FIXED_MODE,
+        preview,
+        colors: {
+          part1: document.getElementById('ct-part1').value,
+          part2: document.getElementById('ct-part2').value,
+          part3: document.getElementById('ct-part3').value,
+          part4: document.getElementById('ct-part4').value
+        }
+      };
+
+      try {
+        const res = await fetch('/api/build_outfit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (!res.ok) {
+          const data = await res.json();
+          showNotice(data.error || 'Build failed.', 'err');
+          return;
+        }
+
+        if (preview) {
+          const data = await res.json();
+          document.getElementById('preview-img').src = data.preview;
+          document.getElementById('preview-area').style.display = '';
+          showNotice('Preview updated (256x96).', 'ok');
+        } else {
+          const blob = await res.blob();
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'outfit_colored.png';
+          a.click();
+          URL.revokeObjectURL(url);
+          showNotice('Export complete.', 'ok');
+        }
+      } catch (e) {
+        showNotice('Build failed: ' + e.message, 'err');
+      }
+    }
+
+    document.getElementById('file-input').addEventListener('change', e => uploadSheets(e.target.files));
+
+    const dropZone = document.getElementById('drop-zone');
+    dropZone.addEventListener('dragover', e => {
+      e.preventDefault();
+      if (e.dataTransfer.types.includes('Files')) dropZone.classList.add('dragover');
+    });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+    dropZone.addEventListener('drop', e => {
+      e.preventDefault();
+      dropZone.classList.remove('dragover');
+      if (e.dataTransfer.files.length) uploadSheets(e.dataTransfer.files);
+    });
+
+    document.getElementById('color-card').style.display = '';
+  </script>
+</body>
+</html>
