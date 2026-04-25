@@ -18,13 +18,41 @@
       place-items: center;
       padding: 24px;
     }
-    .shell {
+    .page {
       width: min(980px, 100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .shell {
+      width: 100%;
       background: rgba(18, 24, 50, 0.72);
       border: 1px solid #2e386f;
       border-radius: 16px;
       padding: 28px;
       box-shadow: 0 16px 50px rgba(0, 0, 0, 0.35);
+    }
+    .brand-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 282px;
+      height: 282px;
+      border-radius: 32px;
+      border: 1px solid #3f4b91;
+      background: rgba(20, 29, 62, 0.75);
+      margin-bottom: 20px;
+      transition: transform 0.15s ease, border-color 0.15s ease;
+    }
+    .brand-link:hover {
+      transform: translateY(-1px);
+      border-color: #6e82ff;
+    }
+    .brand-link img {
+      width: 204px;
+      height: 204px;
+      display: block;
+      object-fit: contain;
     }
     h1 {
       font-size: 30px;
@@ -85,7 +113,11 @@
   </style>
 </head>
 <body>
-  <main class="shell">
+  <div class="page">
+    <a class="brand-link" href="/" title="PAD Labs Home">
+      <img src="/padlabs-icon.png" alt="PAD Labs Logo">
+    </a>
+    <main class="shell">
     <h1>PAD Labs</h1>
     <p>Select which workspace you want to open.</p>
 
@@ -97,11 +129,12 @@
       </a>
 
       <a class="card" href="/items">
-        <span class="badge wip">Work In Progress</span>
+        <span class="badge">Available</span>
         <div class="title">Items Lab</div>
-        <div class="desc">Item tooling is being built and is not available yet.</div>
+        <div class="desc">Build one-line item sprite strips with drag and drop ordering, transforms, preview, and PNG export.</div>
       </a>
     </section>
-  </main>
+    </main>
+  </div>
 </body>
 </html>

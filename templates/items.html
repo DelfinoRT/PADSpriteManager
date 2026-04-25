@@ -3,70 +3,883 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Items Lab - Work In Progress</title>
+  <title>Items Lab</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       min-height: 100vh;
       font-family: "Segoe UI", system-ui, sans-serif;
-      color: #eaf3ff;
+      color: #f3f8ff;
       background:
-        radial-gradient(600px 500px at 85% 15%, rgba(44, 138, 114, 0.32), transparent 60%),
-        radial-gradient(550px 380px at 8% 88%, rgba(52, 95, 197, 0.25), transparent 60%),
-        linear-gradient(160deg, #0d1a21 0%, #0b141d 45%, #0a1019 100%);
-      display: grid;
-      place-items: center;
-      padding: 24px;
+        radial-gradient(700px 500px at 12% 8%, rgba(52, 120, 198, 0.24), transparent 60%),
+        radial-gradient(680px 520px at 92% 88%, rgba(14, 169, 117, 0.22), transparent 62%),
+        linear-gradient(160deg, #0f1622 0%, #10192a 48%, #0c131f 100%);
+      padding: 18px;
     }
-    .panel {
-      width: min(760px, 100%);
-      background: rgba(18, 33, 40, 0.76);
-      border: 1px solid #2a5f66;
-      border-radius: 16px;
-      padding: 28px;
-      text-align: center;
-      box-shadow: 0 14px 42px rgba(0, 0, 0, 0.35);
+    .wrap {
+      max-width: 1280px;
+      margin: 0 auto;
     }
-    .kicker {
-      display: inline-block;
-      font-size: 11px;
-      letter-spacing: 0.8px;
-      text-transform: uppercase;
-      color: #98e6cc;
-      border: 1px solid #3f8d77;
-      border-radius: 999px;
-      padding: 4px 10px;
-      margin-bottom: 14px;
+    .brand-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 58px;
+      height: 58px;
+      border-radius: 12px;
+      border: 1px solid #34567d;
+      background: rgba(13, 24, 42, 0.75);
+      margin-bottom: 10px;
+      transition: transform 0.15s ease, border-color 0.15s ease;
+    }
+    .brand-link:hover {
+      transform: translateY(-1px);
+      border-color: #65a7ff;
+    }
+    .brand-link img {
+      width: 40px;
+      height: 40px;
+      object-fit: contain;
+      display: block;
     }
     h1 {
-      font-size: 34px;
+      font-size: 30px;
+      color: #b4d7ff;
+      margin-bottom: 6px;
+      letter-spacing: 0.3px;
+    }
+    .muted {
+      color: #a5b5ca;
+      font-size: 13px;
+      margin-bottom: 14px;
+    }
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(420px, 1fr) minmax(420px, 1fr);
+      gap: 14px;
+    }
+    .card {
+      background: rgba(16, 25, 40, 0.82);
+      border: 1px solid #2f4d71;
+      border-radius: 12px;
+      padding: 12px;
+      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.22);
+    }
+    .controls {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
       margin-bottom: 10px;
-      color: #c8fff0;
     }
-    p {
-      color: #a8d7ce;
-      margin-bottom: 18px;
-      line-height: 1.5;
+    label {
+      font-size: 13px;
+      color: #bfd0ea;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
     }
-    a {
-      display: inline-block;
-      text-decoration: none;
-      color: #eaf3ff;
-      background: #2e6d6e;
-      border: 1px solid #429091;
+    select, input[type=range] {
+      background: #0e1728;
+      border: 1px solid #32557f;
+      color: #e5f0ff;
+      border-radius: 6px;
+      padding: 5px 7px;
+    }
+    .btn {
+      background: #2d6fbc;
+      color: #fff;
+      border: 1px solid #3a87e2;
       border-radius: 8px;
-      padding: 10px 14px;
+      padding: 8px 11px;
       font-weight: 600;
+      cursor: pointer;
+      font-size: 13px;
     }
-    a:hover { background: #3c8082; }
+    .btn:hover { background: #3c84db; }
+    .btn.secondary {
+      background: #223956;
+      border-color: #335883;
+      color: #d6e6fc;
+    }
+    .btn.warn {
+      background: #7b2f41;
+      border-color: #a4455d;
+    }
+    .drop-zone {
+      border: 2px dashed #3a5e8b;
+      border-radius: 10px;
+      padding: 14px;
+      color: #9eb4d3;
+      text-align: center;
+      margin-bottom: 10px;
+      cursor: pointer;
+      transition: border-color 0.15s ease, background-color 0.15s ease;
+    }
+    .drop-zone:hover, .drop-zone.drag {
+      border-color: #64a9ff;
+      background: rgba(52, 122, 200, 0.16);
+      color: #d7e9ff;
+    }
+    .notice {
+      margin-bottom: 9px;
+      padding: 8px 10px;
+      border-radius: 8px;
+      font-size: 13px;
+      border: 1px solid;
+    }
+    .notice.info { background: #1b314e; border-color: #3b679f; color: #aacaf1; }
+    .notice.ok { background: #1a3d33; border-color: #2f7e66; color: #9fe0c8; }
+    .notice.warn { background: #4a2f15; border-color: #9c6530; color: #f2c48c; }
+    .notice.err { background: #4a1f2c; border-color: #8e3d53; color: #f6a8be; }
+    .frames {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(134px, 1fr));
+      gap: 8px;
+      max-height: 460px;
+      overflow: auto;
+      padding-right: 4px;
+    }
+    .frame {
+      position: relative;
+      border: 1px solid #36597f;
+      border-radius: 8px;
+      background: #0f1a2b;
+      padding: 6px;
+      cursor: grab;
+      user-select: none;
+    }
+    .frame.dragging {
+      opacity: 0.45;
+      border-style: dashed;
+    }
+    .frame-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 4px;
+      gap: 4px;
+    }
+    .idx {
+      font-size: 11px;
+      color: #9eb8d9;
+      font-weight: 700;
+    }
+    .remove {
+      border: none;
+      border-radius: 6px;
+      background: #6c2939;
+      color: #f8ced8;
+      width: 22px;
+      height: 22px;
+      cursor: pointer;
+      font-weight: 700;
+      line-height: 1;
+    }
+    .thumb {
+      width: 100%;
+      height: 96px;
+      border: 1px solid #2e4f76;
+      border-radius: 6px;
+      image-rendering: pixelated;
+      object-fit: contain;
+      background: repeating-conic-gradient(#1a2c45 0% 25%, #122034 0% 50%) 0 0 / 12px 12px;
+      margin-bottom: 4px;
+    }
+    .name {
+      font-size: 10px;
+      color: #93abc9;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      margin-bottom: 5px;
+    }
+    .ops {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 4px;
+    }
+    .op-btn {
+      border: 1px solid #355983;
+      border-radius: 6px;
+      background: #1a2f4a;
+      color: #d8e8ff;
+      font-size: 11px;
+      padding: 4px;
+      cursor: pointer;
+    }
+    .op-btn:hover { background: #244165; }
+    .preview-wrap {
+      width: 100%;
+      overflow: auto;
+      border: 1px solid #2f4f73;
+      border-radius: 8px;
+      min-height: 260px;
+      background:
+        repeating-conic-gradient(#17253a 0% 25%, #101b2e 0% 50%) 0 0 / 14px 14px;
+      padding: 8px;
+    }
+    .preview {
+      transform-origin: top left;
+      image-rendering: pixelated;
+      display: block;
+      background: transparent;
+    }
+    .stats {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 8px;
+      color: #9db4d3;
+      font-size: 12px;
+    }
+    .chip {
+      border: 1px solid #33567d;
+      background: #132338;
+      border-radius: 999px;
+      padding: 4px 9px;
+    }
+    @media (max-width: 1040px) {
+      .layout { grid-template-columns: 1fr; }
+      .frames { max-height: 360px; }
+    }
   </style>
 </head>
 <body>
-  <main class="panel">
-    <span class="kicker">Items Lab</span>
-    <h1>Work In Progress</h1>
-    <p>The Items Lab is not available yet. This page is reserved for upcoming item management tooling.</p>
-    <a href="/">Back To Lab Selector</a>
-  </main>
+  <div class="wrap">
+    <a class="brand-link" href="/" title="PAD Labs Home">
+      <img src="/padlabs-icon.png" alt="PAD Labs Logo">
+    </a>
+    <h1>Items Lab</h1>
+    <p class="muted">Import item sprites, sort by drag and drop, transform per frame, and export one horizontal PNG strip (max 250 frames).</p>
+
+    <div class="layout">
+      <section class="card">
+        <div class="controls">
+          <label>Sprite Size
+            <select id="sprite-size">
+              <option value="32">32x32</option>
+              <option value="64" selected>64x64</option>
+              <option value="96">96x96</option>
+              <option value="128">128x128</option>
+            </select>
+          </label>
+          <button class="btn secondary" id="undo-btn">Undo</button>
+          <button class="btn secondary" id="redo-btn">Redo</button>
+          <button class="btn warn" id="clear-btn">Clear Project</button>
+          <a class="btn secondary" href="/">Back</a>
+        </div>
+
+        <div class="drop-zone" id="drop-zone">
+          <input id="file-input" type="file" multiple accept="image/*" style="display:none">
+          <input id="folder-input" type="file" multiple webkitdirectory directory accept="image/*" style="display:none">
+          <p><strong>Click to import files</strong> or drag images here</p>
+          <p style="font-size:12px; margin-top:6px;">Initial order follows import order only. Folder import is supported.</p>
+        </div>
+        <div class="controls" style="margin-top:-4px;">
+          <button class="btn" id="import-files-btn">Import Files</button>
+          <button class="btn secondary" id="import-folder-btn">Import Folder</button>
+          <button class="btn secondary" id="export-btn">Export PNG Strip</button>
+        </div>
+
+        <div id="notices"></div>
+
+        <div class="stats">
+          <span class="chip" id="frames-chip">Frames: 0 / 250</span>
+          <span class="chip" id="preview-chip">Preview: 0x0</span>
+          <span class="chip" id="zoom-chip">Zoom: 100%</span>
+          <span class="chip" id="transform-chip">Strip Transform: none</span>
+        </div>
+
+        <div class="frames" id="frames"></div>
+      </section>
+
+      <section class="card">
+        <div class="controls">
+          <label>Zoom
+            <input id="zoom-range" type="range" min="25" max="600" step="25" value="100">
+          </label>
+          <button class="btn secondary" id="zoom-reset">100%</button>
+          <button class="btn secondary" id="strip-rotl">Strip Rot L</button>
+          <button class="btn secondary" id="strip-rotr">Strip Rot R</button>
+          <button class="btn secondary" id="strip-fliph">Strip Flip H</button>
+          <button class="btn secondary" id="strip-flipv">Strip Flip V</button>
+          <button class="btn secondary" id="strip-reset-transform">Reset Strip Transform</button>
+        </div>
+        <p class="muted" style="margin-bottom:8px;">Preview auto-refreshes after every action and shows the final one-line strip. Export uses this preview orientation.</p>
+        <div class="preview-wrap" id="preview-wrap">
+          <canvas id="preview-canvas" class="preview" width="1" height="1"></canvas>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <script>
+    const MAX_FRAMES = 250;
+    const notices = document.getElementById('notices');
+    const framesEl = document.getElementById('frames');
+    const spriteSizeEl = document.getElementById('sprite-size');
+    const previewCanvas = document.getElementById('preview-canvas');
+    const previewCtx = previewCanvas.getContext('2d');
+    const zoomRange = document.getElementById('zoom-range');
+    const zoomChip = document.getElementById('zoom-chip');
+    const previewChip = document.getElementById('preview-chip');
+    const framesChip = document.getElementById('frames-chip');
+    const transformChip = document.getElementById('transform-chip');
+
+    const state = {
+      spriteSize: Number(spriteSizeEl.value),
+      frames: [],
+      nextId: 1,
+      dragId: null,
+      undoStack: [],
+      redoStack: [],
+      zoom: 1,
+      stripRotation: 0,
+      stripFlipH: false,
+      stripFlipV: false,
+    };
+
+    function showNotice(message, type = 'info') {
+      const n = document.createElement('div');
+      n.className = 'notice ' + type;
+      n.textContent = message;
+      notices.appendChild(n);
+    }
+
+    function clearNotices() {
+      notices.innerHTML = '';
+    }
+
+    function snapshot() {
+      return {
+        spriteSize: state.spriteSize,
+        frames: state.frames.map(f => ({
+          id: f.id,
+          name: f.name,
+          src: f.src,
+          rotation: f.rotation,
+          flipH: f.flipH,
+          flipV: f.flipV,
+          valid: f.valid,
+          image: f.image,
+        })),
+        nextId: state.nextId,
+        stripRotation: state.stripRotation,
+        stripFlipH: state.stripFlipH,
+        stripFlipV: state.stripFlipV,
+      };
+    }
+
+    function restore(snap) {
+      state.spriteSize = snap.spriteSize;
+      spriteSizeEl.value = String(snap.spriteSize);
+      state.frames = snap.frames.map(f => ({ ...f }));
+      state.nextId = snap.nextId;
+      state.stripRotation = snap.stripRotation || 0;
+      state.stripFlipH = !!snap.stripFlipH;
+      state.stripFlipV = !!snap.stripFlipV;
+      updateSizeLock();
+      renderFrames();
+      renderPreview();
+    }
+
+    function commitMutation(mutator) {
+      state.undoStack.push(snapshot());
+      if (state.undoStack.length > 100) {
+        state.undoStack.shift();
+      }
+      state.redoStack = [];
+      mutator();
+      updateSizeLock();
+      renderFrames();
+      renderPreview();
+    }
+
+    function updateSizeLock() {
+      spriteSizeEl.disabled = state.frames.length > 0;
+    }
+
+    function updateStats() {
+      framesChip.textContent = `Frames: ${state.frames.length} / ${MAX_FRAMES}`;
+      previewChip.textContent = `Preview: ${previewCanvas.width}x${previewCanvas.height}`;
+      zoomChip.textContent = `Zoom: ${Math.round(state.zoom * 100)}%`;
+      const rot = ((state.stripRotation % 4) + 4) % 4;
+      const labels = [];
+      if (rot !== 0) {
+        labels.push(`R${rot * 90}`);
+      }
+      if (state.stripFlipH) {
+        labels.push('FH');
+      }
+      if (state.stripFlipV) {
+        labels.push('FV');
+      }
+      transformChip.textContent = `Strip Transform: ${labels.length ? labels.join(' ') : 'none'}`;
+      document.getElementById('undo-btn').disabled = state.undoStack.length === 0;
+      document.getElementById('redo-btn').disabled = state.redoStack.length === 0;
+    }
+
+    function commitStripMutation(mutator) {
+      state.undoStack.push(snapshot());
+      if (state.undoStack.length > 100) {
+        state.undoStack.shift();
+      }
+      state.redoStack = [];
+      mutator();
+      renderPreview();
+      updateStats();
+    }
+
+    function canvasDataUrlForFrame(frame) {
+      const size = state.spriteSize;
+      const c = document.createElement('canvas');
+      c.width = size;
+      c.height = size;
+      const ctx = c.getContext('2d');
+      ctx.clearRect(0, 0, size, size);
+      drawFrameToContext(ctx, frame, 0, 0, size, size);
+      return c.toDataURL('image/png');
+    }
+
+    function drawFrameToContext(ctx, frame, dx, dy, dw, dh) {
+      if (!frame || !frame.image || !frame.valid) {
+        return;
+      }
+
+      ctx.save();
+      ctx.translate(dx + dw / 2, dy + dh / 2);
+
+      let sx = frame.flipH ? -1 : 1;
+      let sy = frame.flipV ? -1 : 1;
+      if (Math.abs(frame.rotation % 2) === 1) {
+        ctx.rotate((Math.PI / 2) * frame.rotation);
+      } else {
+        ctx.rotate(Math.PI * frame.rotation / 2);
+      }
+      ctx.scale(sx, sy);
+
+      // Fixed top-left crop from source image to selected sprite size.
+      ctx.drawImage(frame.image, 0, 0, state.spriteSize, state.spriteSize, -dw / 2, -dh / 2, dw, dh);
+      ctx.restore();
+    }
+
+    function renderFrames() {
+      framesEl.innerHTML = '';
+      state.frames.forEach((frame, idx) => {
+        const card = document.createElement('div');
+        card.className = 'frame';
+        card.draggable = true;
+        card.dataset.id = String(frame.id);
+
+        const previewUrl = canvasDataUrlForFrame(frame);
+        card.innerHTML = `
+          <div class="frame-head">
+            <span class="idx">#${idx + 1}</span>
+            <button class="remove" data-action="remove" title="Remove">x</button>
+          </div>
+          <img class="thumb" src="${previewUrl}" alt="Frame ${idx + 1}">
+          <div class="name" title="${escapeHtml(frame.name)}">${escapeHtml(frame.name)}</div>
+          <div class="ops">
+            <button class="op-btn" data-action="rotl">Rot L</button>
+            <button class="op-btn" data-action="rotr">Rot R</button>
+            <button class="op-btn" data-action="fliph">Flip H</button>
+            <button class="op-btn" data-action="flipv">Flip V</button>
+          </div>
+        `;
+
+        framesEl.appendChild(card);
+      });
+
+      updateStats();
+    }
+
+    function renderPreview() {
+      const size = state.spriteSize;
+      const count = state.frames.length;
+      const baseW = Math.max(1, count * size);
+      const baseH = Math.max(1, size);
+      const baseCanvas = document.createElement('canvas');
+      baseCanvas.width = baseW;
+      baseCanvas.height = baseH;
+      const baseCtx = baseCanvas.getContext('2d');
+      baseCtx.clearRect(0, 0, baseW, baseH);
+
+      state.frames.forEach((frame, i) => {
+        drawFrameToContext(baseCtx, frame, i * size, 0, size, size);
+      });
+
+      const rot = ((state.stripRotation % 4) + 4) % 4;
+      const outW = rot % 2 === 0 ? baseW : baseH;
+      const outH = rot % 2 === 0 ? baseH : baseW;
+
+      previewCanvas.width = outW;
+      previewCanvas.height = outH;
+      previewCtx.clearRect(0, 0, outW, outH);
+      previewCtx.save();
+      previewCtx.translate(outW / 2, outH / 2);
+      previewCtx.rotate((Math.PI / 2) * rot);
+      previewCtx.scale(state.stripFlipH ? -1 : 1, state.stripFlipV ? -1 : 1);
+      previewCtx.drawImage(baseCanvas, -baseW / 2, -baseH / 2);
+      previewCtx.restore();
+
+      previewCanvas.style.transform = `scale(${state.zoom})`;
+      updateStats();
+    }
+
+    function escapeHtml(str) {
+      return str
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#039;');
+    }
+
+    async function fileToFrame(file) {
+      const src = URL.createObjectURL(file);
+      const img = new Image();
+      img.decoding = 'async';
+      img.src = src;
+
+      let valid = true;
+      try {
+        await img.decode();
+      } catch {
+        valid = false;
+      }
+
+      return {
+        id: state.nextId++,
+        name: file.name,
+        src,
+        image: img,
+        rotation: 0,
+        flipH: false,
+        flipV: false,
+        valid,
+      };
+    }
+
+    async function importFiles(files) {
+      clearNotices();
+      const imageFiles = [...files].filter(f => f.type.startsWith('image/'));
+      if (!imageFiles.length) {
+        showNotice('No image files found in selection.', 'err');
+        return;
+      }
+
+      const freeSlots = MAX_FRAMES - state.frames.length;
+      if (freeSlots <= 0) {
+        showNotice('Frame limit reached (250). Clear or remove frames before importing more.', 'warn');
+        return;
+      }
+
+      const accepted = imageFiles.slice(0, freeSlots);
+      const skipped = imageFiles.length - accepted.length;
+
+      const imported = [];
+      for (const f of accepted) {
+        imported.push(await fileToFrame(f));
+      }
+
+      commitMutation(() => {
+        state.frames = state.frames.concat(imported);
+      });
+
+      showNotice(`Imported ${imported.length} frame(s) in file order.`, 'ok');
+      if (skipped > 0) {
+        showNotice(`Frame limit is 250. Imported first 250 total and skipped ${skipped}.`, 'warn');
+      }
+      if (imported.some(f => !f.valid)) {
+        showNotice('Some files failed to decode and were marked invalid for export.', 'warn');
+      }
+    }
+
+    function findFrameIndexById(id) {
+      return state.frames.findIndex(f => f.id === id);
+    }
+
+    function mutateFrame(id, mutator) {
+      const idx = findFrameIndexById(id);
+      if (idx === -1) {
+        return;
+      }
+      commitMutation(() => {
+        mutator(state.frames[idx]);
+      });
+    }
+
+    function moveFrame(fromId, toId) {
+      if (fromId === toId) {
+        return;
+      }
+      const fromIdx = findFrameIndexById(fromId);
+      const toIdx = findFrameIndexById(toId);
+      if (fromIdx < 0 || toIdx < 0 || fromIdx === toIdx) {
+        return;
+      }
+      commitMutation(() => {
+        const [moved] = state.frames.splice(fromIdx, 1);
+        const target = findFrameIndexById(toId);
+        state.frames.splice(target, 0, moved);
+      });
+    }
+
+    function validateBeforeExport() {
+      const errors = [];
+      if (!state.frames.length) {
+        errors.push('No frames available for export.');
+      }
+      if (state.frames.length > MAX_FRAMES) {
+        errors.push('Frame count exceeds 250.');
+      }
+      if (state.frames.some(f => !f.valid || !f.image)) {
+        errors.push('One or more frames are invalid or empty.');
+      }
+      if (![32, 64, 96, 128].includes(state.spriteSize)) {
+        errors.push('Selected sprite size is invalid.');
+      }
+      return errors;
+    }
+
+    function exportPng() {
+      clearNotices();
+      const errors = validateBeforeExport();
+      if (errors.length) {
+        errors.forEach(err => showNotice(err, 'err'));
+        return;
+      }
+      previewCanvas.toBlob(blob => {
+        if (!blob) {
+          showNotice('Export failed: could not encode PNG.', 'err');
+          return;
+        }
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        const rot = ((state.stripRotation % 4) + 4) % 4;
+        const suffix = `_r${rot * 90}${state.stripFlipH ? '_fh' : ''}${state.stripFlipV ? '_fv' : ''}`;
+        a.download = `items_strip_${state.spriteSize}px_${state.frames.length}f${suffix}.png`;
+        a.click();
+        URL.revokeObjectURL(url);
+        showNotice('PNG strip exported successfully.', 'ok');
+      }, 'image/png');
+    }
+
+    function clearProject() {
+      commitMutation(() => {
+        state.frames = [];
+        state.stripRotation = 0;
+        state.stripFlipH = false;
+        state.stripFlipV = false;
+      });
+      clearNotices();
+      showNotice('Project cleared.', 'ok');
+    }
+
+    function undo() {
+      if (!state.undoStack.length) {
+        return;
+      }
+      const prev = state.undoStack.pop();
+      state.redoStack.push(snapshot());
+      restore(prev);
+      clearNotices();
+      showNotice('Undo applied.', 'info');
+    }
+
+    function redo() {
+      if (!state.redoStack.length) {
+        return;
+      }
+      const next = state.redoStack.pop();
+      state.undoStack.push(snapshot());
+      restore(next);
+      clearNotices();
+      showNotice('Redo applied.', 'info');
+    }
+
+    document.getElementById('import-files-btn').addEventListener('click', () => {
+      document.getElementById('file-input').click();
+    });
+
+    document.getElementById('import-folder-btn').addEventListener('click', () => {
+      document.getElementById('folder-input').click();
+    });
+
+    document.getElementById('file-input').addEventListener('change', e => {
+      importFiles(e.target.files);
+      e.target.value = '';
+    });
+
+    document.getElementById('folder-input').addEventListener('change', e => {
+      importFiles(e.target.files);
+      e.target.value = '';
+    });
+
+    spriteSizeEl.addEventListener('change', e => {
+      const next = Number(e.target.value);
+      if (state.frames.length) {
+        e.target.value = String(state.spriteSize);
+        return;
+      }
+      state.spriteSize = next;
+      renderPreview();
+      clearNotices();
+      showNotice(`Sprite size set to ${next}x${next}.`, 'info');
+    });
+
+    document.getElementById('clear-btn').addEventListener('click', clearProject);
+    document.getElementById('undo-btn').addEventListener('click', undo);
+    document.getElementById('redo-btn').addEventListener('click', redo);
+    document.getElementById('export-btn').addEventListener('click', exportPng);
+
+    zoomRange.addEventListener('input', e => {
+      state.zoom = Number(e.target.value) / 100;
+      previewCanvas.style.transform = `scale(${state.zoom})`;
+      updateStats();
+    });
+
+    document.getElementById('zoom-reset').addEventListener('click', () => {
+      state.zoom = 1;
+      zoomRange.value = '100';
+      previewCanvas.style.transform = 'scale(1)';
+      updateStats();
+    });
+
+    document.getElementById('strip-rotl').addEventListener('click', () => {
+      commitStripMutation(() => {
+        state.stripRotation = (state.stripRotation + 3) % 4;
+      });
+      clearNotices();
+      showNotice('Strip rotated left in preview.', 'info');
+    });
+
+    document.getElementById('strip-rotr').addEventListener('click', () => {
+      commitStripMutation(() => {
+        state.stripRotation = (state.stripRotation + 1) % 4;
+      });
+      clearNotices();
+      showNotice('Strip rotated right in preview.', 'info');
+    });
+
+    document.getElementById('strip-fliph').addEventListener('click', () => {
+      commitStripMutation(() => {
+        state.stripFlipH = !state.stripFlipH;
+      });
+      clearNotices();
+      showNotice('Strip horizontal flip applied in preview.', 'info');
+    });
+
+    document.getElementById('strip-flipv').addEventListener('click', () => {
+      commitStripMutation(() => {
+        state.stripFlipV = !state.stripFlipV;
+      });
+      clearNotices();
+      showNotice('Strip vertical flip applied in preview.', 'info');
+    });
+
+    document.getElementById('strip-reset-transform').addEventListener('click', () => {
+      commitStripMutation(() => {
+        state.stripRotation = 0;
+        state.stripFlipH = false;
+        state.stripFlipV = false;
+      });
+      clearNotices();
+      showNotice('Strip transform reset.', 'info');
+    });
+
+    const dropZone = document.getElementById('drop-zone');
+    dropZone.addEventListener('click', () => document.getElementById('file-input').click());
+    dropZone.addEventListener('dragover', e => {
+      e.preventDefault();
+      if (e.dataTransfer.types.includes('Files')) {
+        dropZone.classList.add('drag');
+      }
+    });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag'));
+    dropZone.addEventListener('drop', e => {
+      e.preventDefault();
+      dropZone.classList.remove('drag');
+      if (e.dataTransfer.files.length) {
+        importFiles(e.dataTransfer.files);
+      }
+    });
+
+    framesEl.addEventListener('click', e => {
+      const btn = e.target.closest('button[data-action]');
+      if (!btn) {
+        return;
+      }
+      const frameEl = e.target.closest('.frame');
+      if (!frameEl) {
+        return;
+      }
+      const id = Number(frameEl.dataset.id);
+      const action = btn.dataset.action;
+      if (action === 'remove') {
+        commitMutation(() => {
+          const idx = findFrameIndexById(id);
+          if (idx >= 0) {
+            state.frames.splice(idx, 1);
+          }
+        });
+        return;
+      }
+      if (action === 'rotl') {
+        mutateFrame(id, frame => { frame.rotation = (frame.rotation + 3) % 4; });
+        return;
+      }
+      if (action === 'rotr') {
+        mutateFrame(id, frame => { frame.rotation = (frame.rotation + 1) % 4; });
+        return;
+      }
+      if (action === 'fliph') {
+        mutateFrame(id, frame => { frame.flipH = !frame.flipH; });
+        return;
+      }
+      if (action === 'flipv') {
+        mutateFrame(id, frame => { frame.flipV = !frame.flipV; });
+      }
+    });
+
+    framesEl.addEventListener('dragstart', e => {
+      const frameEl = e.target.closest('.frame');
+      if (!frameEl) {
+        return;
+      }
+      state.dragId = Number(frameEl.dataset.id);
+      frameEl.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    });
+
+    framesEl.addEventListener('dragend', e => {
+      const frameEl = e.target.closest('.frame');
+      if (frameEl) {
+        frameEl.classList.remove('dragging');
+      }
+      state.dragId = null;
+    });
+
+    framesEl.addEventListener('dragover', e => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+    });
+
+    framesEl.addEventListener('drop', e => {
+      e.preventDefault();
+      const target = e.target.closest('.frame');
+      if (!target || state.dragId === null) {
+        return;
+      }
+      const toId = Number(target.dataset.id);
+      moveFrame(state.dragId, toId);
+    });
+
+    renderFrames();
+    renderPreview();
+    showNotice('Select sprite size first, then import files or folders.', 'info');
+  </script>
 </body>
 </html>

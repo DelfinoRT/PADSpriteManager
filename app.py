@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify, render_template, send_file
 from PIL import Image
 import io, base64
+from pathlib import Path
 
 app = Flask(__name__)
 
@@ -163,6 +164,12 @@ def outfits_lab():
 @app.route('/items')
 def items_lab():
     return render_template('items.html')
+
+
+@app.route('/padlabs-icon.png')
+def padlabs_icon():
+    icon_path = Path(app.root_path) / 'padlabs-icon.png'
+    return send_file(icon_path, mimetype='image/png')
 
 
 @app.route('/api/upload_sheets', methods=['POST'])
