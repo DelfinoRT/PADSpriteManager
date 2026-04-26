@@ -88,10 +88,20 @@ def extract_animation(file_storage):
     }
 
 
+AGGRESSIVENESS_THRESHOLDS = {
+    1: 0.22,
+    2: 0.15,
+    3: 0.09,
+    4: 0.05,
+    5: 0.02,
+}
+
+
 def analyze_color_groups(
     frames,
     max_groups=64,
     min_pixel_share=0.00005,
+    merge_threshold=0.09,
 ):
     stats = {}
     total_pixels = 0
@@ -186,7 +196,6 @@ def analyze_color_groups(
     chromatic.sort(key=lambda entry: entry['avg_h'] if entry['avg_h'] is not None else -1.0)
 
     merged_chromatic = []
-    merge_threshold = 0.09
     for entry in chromatic:
         if not merged_chromatic:
             merged_chromatic.append(entry)
@@ -678,8 +687,11 @@ def recolor_upload():
         return jsonify({'error': 'No file uploaded.'}), 400
 
     try:
+        aggressiveness = int(request.form.get('aggressiveness', 3))
+        aggressiveness = max(1, min(5, aggressiveness))
+        threshold = AGGRESSIVENESS_THRESHOLDS[aggressiveness]
         parsed = extract_animation(file_obj)
-        groups, by_key = analyze_color_groups(parsed['frames'])
+        groups, by_key = analyze_color_groups(parsed['frames'], merge_threshold=threshold)
     except Exception as exc:
         return jsonify({'error': f'Unable to read sprite: {exc}'}), 400
 
@@ -749,6 +761,68 @@ def recolor_upload():
             for g in groups
         ],
         'original_preview': bytes_to_data_uri(preview_bytes, preview_mime),
+    })
+
+
+@app.route('/api/recolor/reanalyze', methods=['POST'])
+def recolor_reanalyze():
+    body = request.get_json(force=True, silent=True) or {}
+    upload_id = body.get('upload_id', '')
+    upload = recolor_uploads.get(upload_id)
+    if not upload:
+        return jsonify({'error': 'Upload not found. Please re-upload the sprite.'}), 404
+
+    aggressiveness = int(body.get('aggressiveness', 3))
+    aggressiveness = max(1, min(5, aggressiveness))
+    threshold = AGGRESSIVENESS_THRESHOLDS[aggressiveness]
+
+    try:
+        groups, by_key = analyze_color_groups(upload['frames'], merge_threshold=threshold)
+    except Exception as exc:
+        return jsonify({'error': f'Re-analysis failed: {exc}'}), 500
+
+    if not groups:
+        return jsonify({'error': 'No editable color groups found.'}), 400
+
+    upload['groups'] = groups
+    upload['groups_by_key'] = by_key
+
+    individual_counts = {}
+    individual_group_refs = {}
+    for group in groups:
+        gid = group['id']
+        for color in group.get('colors', []):
+            src_hex = (color.get('hex') or '').lower()
+            if not src_hex:
+                continue
+            individual_counts[src_hex] = individual_counts.get(src_hex, 0) + int(color.get('pixel_count', 0) or 0)
+            refs = individual_group_refs.get(src_hex)
+            if refs is None:
+                refs = set()
+                individual_group_refs[src_hex] = refs
+            refs.add(gid)
+
+    individual_colors = [
+        {
+            'hex': hex_color,
+            'pixel_count': px_count,
+            'groups': sorted(list(individual_group_refs.get(hex_color, set()))),
+        }
+        for hex_color, px_count in sorted(individual_counts.items(), key=lambda item: item[1], reverse=True)
+    ]
+
+    return jsonify({
+        'individual_colors': individual_colors,
+        'groups': [
+            {
+                'id': g['id'],
+                'hex': g['hex'],
+                'pixel_count': g['pixel_count'],
+                'frame_hits': g['frame_hits'],
+                'colors': g['colors'],
+            }
+            for g in groups
+        ],
     })
 
 

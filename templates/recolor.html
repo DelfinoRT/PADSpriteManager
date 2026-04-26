@@ -317,6 +317,36 @@
       color: #c8dce4;
     }
 
+    .aggr-buttons {
+      display: inline-flex;
+      gap: 3px;
+      margin-left: 4px;
+    }
+
+    .aggr-btn {
+      width: 30px;
+      height: 30px;
+      border-radius: 6px;
+      border: 1px solid #385763;
+      background: #1a2d36;
+      color: #c8dce4;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+    }
+
+    .aggr-btn:hover {
+      background: #243f4e;
+      border-color: #5aa0b8;
+    }
+
+    .aggr-btn.active {
+      background: #1a7fa0;
+      border-color: #5aa0b8;
+      color: #fff;
+    }
+
     .inline-control input[type=color] {
       width: 36px;
       height: 34px;
@@ -388,6 +418,15 @@
     <section class="panel">
       <div class="controls">
         <button class="btn" id="upload-btn">Upload Sprite</button>
+        <label style="font-size:13px; color:#c8dce4;">Group Detail
+          <div class="aggr-buttons" id="aggr-buttons">
+            <button class="aggr-btn" data-level="1" title="Level 1 — broadest grouping, fewest groups">1</button>
+            <button class="aggr-btn" data-level="2" title="Level 2">2</button>
+            <button class="aggr-btn active" data-level="3" title="Level 3 — default">3</button>
+            <button class="aggr-btn" data-level="4" title="Level 4">4</button>
+            <button class="aggr-btn" data-level="5" title="Level 5 — finest grouping, most groups">5</button>
+          </div>
+        </label>
         <button class="btn secondary" id="preview-btn">Refresh Preview</button>
         <label style="font-size:13px; color:#c8dce4;">Export Format
           <select id="format-select">
@@ -485,6 +524,7 @@
       individualHexReplacements: {},
       previewDebounce: null,
       previewZoom: 4,
+      aggressiveness: 3,
     };
 
     const notices = document.getElementById('notices');
@@ -665,6 +705,7 @@
 
       const data = new FormData();
       data.append('file', file);
+      data.append('aggressiveness', String(state.aggressiveness));
 
       try {
         const res = await fetch('/api/recolor/upload', { method: 'POST', body: data });
@@ -825,6 +866,45 @@
         uploadSprite(event.target.files[0]);
       }
       event.target.value = '';
+    });
+
+    async function reanalyzeGroups() {
+      if (!state.uploadId) return;
+      clearNotices();
+      try {
+        const res = await fetch('/api/recolor/reanalyze', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ upload_id: state.uploadId, aggressiveness: state.aggressiveness }),
+        });
+        const body = await res.json();
+        if (!res.ok) {
+          showNotice(body.error || 'Re-analysis failed.', 'err');
+          return;
+        }
+        state.individualColors = body.individual_colors || [];
+        state.groups = body.groups || [];
+        state.replacements = {};
+        state.groups.forEach(g => { state.replacements[g.id] = g.hex; });
+        state.individualHexReplacements = {};
+        renderOriginalIndividualColors();
+        renderRecolorIndividualColors();
+        renderGroups();
+        document.getElementById('chip-groups').textContent = 'Groups: ' + state.groups.length;
+        showNotice(`Re-analyzed: ${state.groups.length} groups at detail level ${state.aggressiveness}.`, 'ok');
+        queuePreview();
+      } catch (err) {
+        showNotice('Re-analysis failed: ' + err.message, 'err');
+      }
+    }
+
+    document.getElementById('aggr-buttons').addEventListener('click', (event) => {
+      const btn = event.target.closest('.aggr-btn');
+      if (!btn) return;
+      const level = parseInt(btn.dataset.level, 10);
+      state.aggressiveness = level;
+      document.querySelectorAll('.aggr-btn').forEach(b => b.classList.toggle('active', parseInt(b.dataset.level, 10) === level));
+      if (state.uploadId) reanalyzeGroups();
     });
 
     document.getElementById('background-mode-select').addEventListener('change', syncBackgroundControls);
