@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sprite Recolor Lab</title>
+  <style>
+    :root {
+      --bg-a: #0e1a1e;
+      --bg-b: #1b2a22;
+      --panel: #152025;
+      --panel-soft: #1c2b2f;
+      --line: #35535f;
+      --line-strong: #4f7988;
+      --text: #ddedf2;
+      --muted: #9eb6bf;
+      --accent: #2fa37f;
+      --accent-strong: #39c99e;
+      --warn: #cb5d67;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      min-height: 100vh;
+      background:
+        radial-gradient(700px 450px at 10% 8%, rgba(56, 152, 127, 0.25), transparent 62%),
+        radial-gradient(700px 500px at 90% 92%, rgba(60, 111, 132, 0.22), transparent 64%),
+        linear-gradient(160deg, var(--bg-a) 0%, #0b1418 52%, var(--bg-b) 100%);
+      color: var(--text);
+      font-family: "Trebuchet MS", "Lucida Sans Unicode", "Lucida Grande", sans-serif;
+      padding: 18px;
+    }
+
+    .wrap {
+      max-width: 1280px;
+      margin: 0 auto;
+    }
+
+    .brand-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 58px;
+      height: 58px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: rgba(14, 27, 31, 0.82);
+      margin-bottom: 10px;
+      transition: border-color 0.15s ease, transform 0.15s ease;
+    }
+
+    .brand-link:hover {
+      border-color: var(--line-strong);
+      transform: translateY(-1px);
+    }
+
+    .brand-link img {
+      width: 40px;
+      height: 40px;
+      object-fit: contain;
+      display: block;
+    }
+
+    h1 {
+      font-size: 31px;
+      letter-spacing: 0.5px;
+      margin-bottom: 6px;
+      color: #c0f1df;
+    }
+
+    .muted {
+      color: var(--muted);
+      font-size: 13px;
+      margin-bottom: 14px;
+    }
+
+    .panel {
+      background: linear-gradient(160deg, rgba(20, 31, 36, 0.95) 0%, rgba(16, 25, 29, 0.95) 100%);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px;
+      margin-bottom: 12px;
+      box-shadow: 0 10px 26px rgba(0, 0, 0, 0.22);
+    }
+
+    .controls {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .btn {
+      border: 1px solid #3f6d78;
+      background: #275760;
+      color: #e5f6fb;
+      border-radius: 8px;
+      padding: 8px 12px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 700;
+      transition: background 0.15s ease, border-color 0.15s ease;
+    }
+
+    .btn:hover { background: #30717e; border-color: #5b96a6; }
+    .btn.secondary { background: #23393f; border-color: #3a5861; }
+    .btn.secondary:hover { background: #2d4850; }
+    .btn.warn { background: #68303a; border-color: #9b4d5c; }
+    .btn.warn:hover { background: #854050; }
+
+    select, input[type=text] {
+      background: #132228;
+      border: 1px solid #36555f;
+      color: var(--text);
+      border-radius: 7px;
+      padding: 6px 8px;
+    }
+
+    .drop-zone {
+      border: 2px dashed #446976;
+      border-radius: 10px;
+      text-align: center;
+      color: #9ebbc4;
+      padding: 20px;
+      cursor: pointer;
+      transition: border-color 0.15s ease, background 0.15s ease;
+    }
+
+    .drop-zone:hover,
+    .drop-zone.drag {
+      border-color: #5fa4b9;
+      background: rgba(74, 134, 151, 0.18);
+      color: #d2eef6;
+    }
+
+    .notice {
+      margin-top: 8px;
+      padding: 8px 10px;
+      border-radius: 8px;
+      border: 1px solid;
+      font-size: 13px;
+    }
+
+    .notice.info { background: #1d3640; border-color: #3f6e7f; color: #bfe6f4; }
+    .notice.ok { background: #1b3d34; border-color: #31856d; color: #adedd6; }
+    .notice.err { background: #49272f; border-color: #8d4a59; color: #ffc2ce; }
+
+    .workspace {
+      display: grid;
+      grid-template-columns: minmax(330px, 1fr) minmax(330px, 1fr) minmax(340px, 1.2fr);
+      gap: 10px;
+      align-items: start;
+    }
+
+    .col-title {
+      color: #bde7da;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 8px;
+    }
+
+    .groups {
+      display: grid;
+      gap: 7px;
+      max-height: 500px;
+      overflow: auto;
+      padding-right: 4px;
+    }
+
+    .groups.compact {
+      max-height: 330px;
+    }
+
+    .group-row {
+      display: grid;
+      grid-template-columns: 44px 1fr;
+      gap: 8px;
+      align-items: center;
+      border: 1px solid #35535f;
+      border-radius: 8px;
+      background: var(--panel-soft);
+      padding: 7px;
+      min-height: 52px;
+    }
+
+    .swatch {
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      border: 1px solid rgba(0, 0, 0, 0.45);
+    }
+
+    .group-main {
+      font-size: 12px;
+      color: #cbdee5;
+      line-height: 1.25;
+    }
+
+    .group-main strong {
+      color: #ecf7fb;
+      font-size: 13px;
+      margin-right: 6px;
+    }
+
+    .picker-row {
+      display: grid;
+      grid-template-columns: 42px 1fr;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .picker-row input[type=color] {
+      width: 36px;
+      height: 34px;
+      border-radius: 6px;
+      border: 1px solid #385763;
+      background: transparent;
+      padding: 0;
+      cursor: pointer;
+    }
+
+    .sub-controls {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .sub-controls label {
+      font-size: 12px;
+      color: #c8dce4;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .individual-list {
+      display: grid;
+      gap: 6px;
+      max-height: 360px;
+      overflow: auto;
+      padding-right: 4px;
+    }
+
+    .individual-row {
+      display: grid;
+      grid-template-columns: 44px 1fr;
+      gap: 8px;
+      align-items: center;
+      border: 1px solid #35535f;
+      border-radius: 8px;
+      background: #162329;
+      padding: 7px;
+      min-height: 50px;
+    }
+
+    .individual-meta {
+      font-size: 12px;
+      color: #c6dce3;
+      line-height: 1.25;
+    }
+
+    .individual-meta strong {
+      color: #e8f8fb;
+      margin-right: 6px;
+    }
+
+    .preview-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .preview-card {
+      border: 1px solid #35535f;
+      border-radius: 8px;
+      background: #101b20;
+      padding: 8px;
+    }
+
+    .preview-card h3 {
+      font-size: 13px;
+      margin-bottom: 6px;
+      color: #c8e8df;
+    }
+
+    .preview-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+
+    .zoom-controls {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: #b7ced7;
+      font-size: 12px;
+    }
+
+    .zoom-controls input[type=range] {
+      width: 110px;
+      accent-color: #49c49f;
+    }
+
+    .inline-control {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      color: #c8dce4;
+    }
+
+    .inline-control input[type=color] {
+      width: 36px;
+      height: 34px;
+      border-radius: 6px;
+      border: 1px solid #385763;
+      background: transparent;
+      padding: 0;
+      cursor: pointer;
+    }
+
+    .preview-box {
+      min-height: 360px;
+      max-height: 620px;
+      overflow: auto;
+      border: 1px solid #335160;
+      border-radius: 7px;
+      background:
+        repeating-conic-gradient(#172a31 0% 25%, #102028 0% 50%) 0 0 / 14px 14px;
+      display: grid;
+      place-items: center;
+      padding: 8px;
+    }
+
+    .preview-box img {
+      image-rendering: pixelated;
+      width: auto;
+      max-width: none;
+      height: auto;
+      display: block;
+      transform-origin: center;
+      transform: scale(var(--preview-zoom, 3));
+    }
+
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .chip {
+      border: 1px solid #35535f;
+      border-radius: 999px;
+      background: #132228;
+      color: #c0dce6;
+      font-size: 12px;
+      padding: 4px 9px;
+    }
+
+    @media (max-width: 1100px) {
+      .workspace {
+        grid-template-columns: 1fr;
+      }
+      .preview-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <a class="brand-link" href="/" title="PAD Labs Home">
+      <img src="/padlabs-icon.png" alt="PAD Labs Logo">
+    </a>
+
+    <h1>Sprite Recolor Lab</h1>
+    <p class="muted">Drop an animated GIF or APNG, auto-detect core color groups, choose replacement colors, preview before/after animation, then export as GIF or APNG.</p>
+
+    <section class="panel">
+      <div class="controls">
+        <button class="btn" id="upload-btn">Upload Sprite</button>
+        <button class="btn secondary" id="preview-btn">Refresh Preview</button>
+        <label style="font-size:13px; color:#c8dce4;">Export Format
+          <select id="format-select">
+            <option value="gif" selected>GIF</option>
+            <option value="apng">Animated PNG (APNG)</option>
+          </select>
+        </label>
+        <label class="inline-control">Download Background
+          <select id="background-mode-select">
+            <option value="transparent" selected>Transparent</option>
+            <option value="solid">Solid Color</option>
+          </select>
+        </label>
+        <label class="inline-control" id="background-color-wrap" style="display:none;">
+          Color
+          <input type="color" id="background-color-input" value="#ffffff">
+          <input type="text" id="background-color-text" maxlength="7" value="#ffffff">
+        </label>
+        <button class="btn" id="export-btn">Download Recolored</button>
+        <button class="btn warn" id="clear-btn">Clear</button>
+        <a class="btn secondary" href="/">Back</a>
+      </div>
+
+      <div class="drop-zone" id="drop-zone">
+        <input id="file-input" type="file" accept="image/gif,image/png" style="display:none">
+        <p><strong>Click to choose a GIF/APNG</strong> or drag and drop it here</p>
+        <p style="font-size:12px; margin-top:5px;">Dark shades and border pixels are excluded from editable groups by default.</p>
+      </div>
+
+      <div id="notices"></div>
+    </section>
+
+    <section class="panel">
+      <div class="meta">
+        <span class="chip" id="chip-file">File: none</span>
+        <span class="chip" id="chip-size">Size: -</span>
+        <span class="chip" id="chip-frames">Frames: 0</span>
+        <span class="chip" id="chip-groups">Groups: 0</span>
+      </div>
+
+      <div class="workspace">
+        <div>
+          <div class="col-title">Original Individual Colors</div>
+          <div class="individual-list" id="original-individual-list"></div>
+
+          <div class="col-title" style="margin-top:10px;">Original Color Groups</div>
+          <div class="groups compact" id="original-groups"></div>
+        </div>
+
+        <div>
+          <div class="col-title">Recolor By Individual Colors</div>
+          <div class="individual-list" id="recolor-individual-list"></div>
+
+          <div class="col-title" style="margin-top:10px;">Recolor By Groups</div>
+          <div class="groups compact" id="replacement-groups"></div>
+        </div>
+
+        <div>
+          <div class="col-title">Preview</div>
+          <div class="preview-grid">
+            <article class="preview-card">
+              <div class="preview-head">
+                <h3>Before</h3>
+                <label class="zoom-controls" for="preview-zoom">
+                  Zoom
+                  <input id="preview-zoom" type="range" min="2" max="12" step="1" value="4">
+                  <span id="preview-zoom-value">4x</span>
+                </label>
+              </div>
+              <div class="preview-box">
+                <img id="before-preview" alt="Original preview">
+              </div>
+            </article>
+            <article class="preview-card">
+              <div class="preview-head">
+                <h3>After</h3>
+              </div>
+              <div class="preview-box">
+                <img id="after-preview" alt="Recolored preview">
+              </div>
+            </article>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const state = {
+      uploadId: null,
+      fileName: '',
+      individualColors: [],
+      groups: [],
+      replacements: {},
+      individualHexReplacements: {},
+      previewDebounce: null,
+      previewZoom: 4,
+    };
+
+    const notices = document.getElementById('notices');
+
+    function applyPreviewZoom() {
+      const zoom = Number(state.previewZoom) || 4;
+      document.documentElement.style.setProperty('--preview-zoom', String(zoom));
+      document.getElementById('preview-zoom-value').textContent = zoom + 'x';
+    }
+
+    function showNotice(message, type = 'info') {
+      const el = document.createElement('div');
+      el.className = 'notice ' + type;
+      el.textContent = message;
+      notices.appendChild(el);
+    }
+
+    function clearNotices() {
+      notices.innerHTML = '';
+    }
+
+    function setMeta(fileName, size, frames, groups) {
+      document.getElementById('chip-file').textContent = 'File: ' + (fileName || 'none');
+      document.getElementById('chip-size').textContent = 'Size: ' + (size || '-');
+      document.getElementById('chip-frames').textContent = 'Frames: ' + String(frames || 0);
+      document.getElementById('chip-groups').textContent = 'Groups: ' + String(groups || 0);
+    }
+
+    function renderOriginalIndividualColors() {
+      const list = document.getElementById('original-individual-list');
+      list.innerHTML = '';
+
+      state.individualColors.forEach((colorInfo, idx) => {
+        const sourceHex = (colorInfo.hex || '').toLowerCase();
+        const groupsText = (colorInfo.groups || []).join(', ');
+        const row = document.createElement('div');
+        row.className = 'individual-row';
+        row.innerHTML = `
+          <div class="swatch" style="background:${sourceHex}"></div>
+          <div class="individual-meta">
+            <div><strong>${idx + 1}.</strong>${sourceHex}</div>
+            <div>${(colorInfo.pixel_count || 0).toLocaleString()} px${groupsText ? ` • ${groupsText}` : ''}</div>
+          </div>
+        `;
+        list.appendChild(row);
+      });
+    }
+
+    function renderRecolorIndividualColors() {
+      const list = document.getElementById('recolor-individual-list');
+      list.innerHTML = '';
+
+      state.individualColors.forEach((colorInfo, idx) => {
+        const sourceHex = (colorInfo.hex || '').toLowerCase();
+        const current = state.individualHexReplacements[sourceHex] || sourceHex;
+
+        const row = document.createElement('div');
+        row.className = 'individual-row';
+        row.innerHTML = `
+          <div class="swatch" style="background:${sourceHex}"></div>
+          <div>
+            <div class="picker-row" style="margin-bottom:4px;">
+              <input type="color" id="any-picker-${idx}" value="${current}">
+              <input type="text" id="any-text-${idx}" maxlength="7" value="${current}">
+            </div>
+            <div class="individual-meta">
+              <div><strong>${sourceHex}</strong> -> ${current}</div>
+              <div>${(colorInfo.pixel_count || 0).toLocaleString()} px</div>
+            </div>
+          </div>
+        `;
+        list.appendChild(row);
+
+        const picker = row.querySelector(`#any-picker-${idx}`);
+        const text = row.querySelector(`#any-text-${idx}`);
+
+        picker.addEventListener('input', () => {
+          const next = picker.value.toLowerCase();
+          text.value = next;
+          if (next === sourceHex) {
+            delete state.individualHexReplacements[sourceHex];
+          } else {
+            state.individualHexReplacements[sourceHex] = next;
+          }
+          queuePreview();
+        });
+
+        text.addEventListener('input', () => {
+          const value = text.value.trim().toLowerCase();
+          if (/^#[0-9a-f]{6}$/.test(value)) {
+            picker.value = value;
+            if (value === sourceHex) {
+              delete state.individualHexReplacements[sourceHex];
+            } else {
+              state.individualHexReplacements[sourceHex] = value;
+            }
+            queuePreview();
+          }
+        });
+      });
+    }
+
+    function renderGroups() {
+      const original = document.getElementById('original-groups');
+      const replacement = document.getElementById('replacement-groups');
+      original.innerHTML = '';
+      replacement.innerHTML = '';
+
+      state.groups.forEach((group, idx) => {
+        const rowA = document.createElement('div');
+        rowA.className = 'group-row';
+        rowA.innerHTML = `
+          <div class="swatch" style="background:${group.hex}"></div>
+          <div class="group-main">
+            <div><strong>${group.id}</strong>${group.hex}</div>
+            <div>${group.pixel_count.toLocaleString()} px • ${group.frame_hits || 0} frames • ${(group.colors || []).length} colors</div>
+          </div>
+        `;
+        original.appendChild(rowA);
+
+        const current = state.replacements[group.id] || group.hex;
+        const rowB = document.createElement('div');
+        rowB.className = 'group-row';
+        rowB.innerHTML = `
+          <div class="picker-row">
+            <input type="color" id="picker-${group.id}" value="${current}">
+            <input type="text" id="text-${group.id}" maxlength="7" value="${current}">
+          </div>
+          <div class="group-main">
+            <div><strong>${group.id}</strong>from ${group.hex}</div>
+            <div>Base recolor ${idx + 1} (auto shades)</div>
+          </div>
+        `;
+        replacement.appendChild(rowB);
+
+        const picker = rowB.querySelector('#picker-' + group.id);
+        const text = rowB.querySelector('#text-' + group.id);
+
+        picker.addEventListener('input', () => {
+          text.value = picker.value;
+          state.replacements[group.id] = picker.value;
+          queuePreview();
+        });
+
+        text.addEventListener('input', () => {
+          const value = text.value.trim();
+          if (/^#[0-9a-fA-F]{6}$/.test(value)) {
+            picker.value = value;
+            state.replacements[group.id] = value;
+            queuePreview();
+          }
+        });
+      });
+    }
+
+    function buildRecolorPayload() {
+      return {
+        group: state.replacements,
+        individual_hex: state.individualHexReplacements,
+      };
+    }
+
+    function syncBackgroundControls() {
+      const mode = document.getElementById('background-mode-select').value;
+      document.getElementById('background-color-wrap').style.display = mode === 'solid' ? '' : 'none';
+    }
+
+    async function uploadSprite(file) {
+      clearNotices();
+      if (!file) {
+        showNotice('No file selected.', 'err');
+        return;
+      }
+      if (!file.type.startsWith('image/')) {
+        showNotice('Only image files are allowed.', 'err');
+        return;
+      }
+
+      const data = new FormData();
+      data.append('file', file);
+
+      try {
+        const res = await fetch('/api/recolor/upload', { method: 'POST', body: data });
+        const body = await res.json();
+        if (!res.ok) {
+          showNotice(body.error || 'Upload failed.', 'err');
+          return;
+        }
+
+        state.uploadId = body.upload_id;
+        state.fileName = file.name;
+        state.individualColors = body.individual_colors || [];
+        state.groups = body.groups || [];
+        state.replacements = {};
+        state.individualHexReplacements = {};
+        state.groups.forEach(g => { state.replacements[g.id] = g.hex; });
+
+        renderOriginalIndividualColors();
+        renderRecolorIndividualColors();
+        renderGroups();
+        setMeta(file.name, `${body.size[0]}x${body.size[1]}`, body.frame_count, state.groups.length);
+
+        document.getElementById('before-preview').src = body.original_preview;
+        document.getElementById('after-preview').src = body.original_preview;
+        showNotice(`Loaded ${file.name}. Found ${state.groups.length} editable color groups.`, 'ok');
+      } catch (err) {
+        showNotice('Upload failed: ' + err.message, 'err');
+      }
+    }
+
+    async function refreshPreview(silent = false) {
+      if (!silent) {
+        clearNotices();
+      }
+      if (!state.uploadId) {
+        if (!silent) {
+          showNotice('Upload a sprite first.', 'err');
+        }
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/recolor/preview', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            upload_id: state.uploadId,
+            replacements: buildRecolorPayload(),
+          }),
+        });
+        const body = await res.json();
+        if (!res.ok) {
+          if (!silent) {
+            showNotice(body.error || 'Preview failed.', 'err');
+          }
+          return;
+        }
+        document.getElementById('after-preview').src = body.preview;
+        if (!silent) {
+          showNotice('Preview updated.', 'ok');
+        }
+      } catch (err) {
+        if (!silent) {
+          showNotice('Preview failed: ' + err.message, 'err');
+        }
+      }
+    }
+
+    async function exportSprite() {
+      clearNotices();
+      if (!state.uploadId) {
+        showNotice('Upload a sprite first.', 'err');
+        return;
+      }
+
+      const format = document.getElementById('format-select').value;
+      const backgroundMode = document.getElementById('background-mode-select').value;
+      const backgroundColor = document.getElementById('background-color-text').value;
+      try {
+        const res = await fetch('/api/recolor/export', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            upload_id: state.uploadId,
+            replacements: buildRecolorPayload(),
+            format,
+            background_mode: backgroundMode,
+            background_color: backgroundColor,
+          }),
+        });
+
+        if (!res.ok) {
+          const body = await res.json();
+          showNotice(body.error || 'Export failed.', 'err');
+          return;
+        }
+
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `sprite_recolor.${format === 'apng' ? 'png' : 'gif'}`;
+        a.click();
+        URL.revokeObjectURL(url);
+        showNotice(`Download complete (${format.toUpperCase()}).`, 'ok');
+      } catch (err) {
+        showNotice('Export failed: ' + err.message, 'err');
+      }
+    }
+
+    async function clearSession() {
+      clearNotices();
+      if (state.uploadId) {
+        try {
+          await fetch('/api/recolor/clear', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ upload_id: state.uploadId }),
+          });
+        } catch (_) {
+          // Ignore cleanup errors and still reset the UI.
+        }
+      }
+
+      state.uploadId = null;
+      state.fileName = '';
+      state.individualColors = [];
+      state.groups = [];
+      state.replacements = {};
+      state.individualHexReplacements = {};
+      renderOriginalIndividualColors();
+      renderRecolorIndividualColors();
+      renderGroups();
+      setMeta('', '', 0, 0);
+      document.getElementById('before-preview').src = '';
+      document.getElementById('after-preview').src = '';
+      showNotice('Cleared current sprite.', 'ok');
+    }
+
+    function queuePreview() {
+      if (!state.uploadId) return;
+      clearTimeout(state.previewDebounce);
+      state.previewDebounce = setTimeout(() => {
+        refreshPreview(true);
+      }, 60);
+    }
+
+    document.getElementById('upload-btn').addEventListener('click', () => {
+      document.getElementById('file-input').click();
+    });
+
+    document.getElementById('preview-btn').addEventListener('click', refreshPreview);
+    document.getElementById('export-btn').addEventListener('click', exportSprite);
+    document.getElementById('clear-btn').addEventListener('click', clearSession);
+
+    document.getElementById('file-input').addEventListener('change', (event) => {
+      if (event.target.files && event.target.files[0]) {
+        uploadSprite(event.target.files[0]);
+      }
+      event.target.value = '';
+    });
+
+    document.getElementById('background-mode-select').addEventListener('change', syncBackgroundControls);
+    document.getElementById('background-color-input').addEventListener('input', (event) => {
+      document.getElementById('background-color-text').value = event.target.value.toLowerCase();
+    });
+    document.getElementById('background-color-text').addEventListener('input', (event) => {
+      const value = event.target.value.trim().toLowerCase();
+      if (/^#[0-9a-f]{6}$/.test(value)) {
+        document.getElementById('background-color-input').value = value;
+      }
+    });
+
+    const dropZone = document.getElementById('drop-zone');
+    dropZone.addEventListener('click', () => document.getElementById('file-input').click());
+    dropZone.addEventListener('dragover', (event) => {
+      event.preventDefault();
+      if (event.dataTransfer.types.includes('Files')) {
+        dropZone.classList.add('drag');
+      }
+    });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag'));
+    dropZone.addEventListener('drop', (event) => {
+      event.preventDefault();
+      dropZone.classList.remove('drag');
+      if (event.dataTransfer.files && event.dataTransfer.files[0]) {
+        uploadSprite(event.dataTransfer.files[0]);
+      }
+    });
+
+    document.getElementById('preview-zoom').addEventListener('input', (event) => {
+      state.previewZoom = Number(event.target.value) || 4;
+      applyPreviewZoom();
+    });
+
+    syncBackgroundControls();
+    applyPreviewZoom();
+    setMeta('', '', 0, 0);
+  </script>
+</body>
+</html>
