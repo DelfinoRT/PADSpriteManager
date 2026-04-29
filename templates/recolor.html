@@ -789,9 +789,6 @@
         }
         return;
       }
-      if (state.isUploading || state.isReanalyzing) {
-        return;
-      }
 
       try {
         const res = await fetch('/api/recolor/preview', {
@@ -908,7 +905,6 @@
 
     function queuePreview() {
       if (!state.uploadId) return;
-      if (state.isUploading || state.isReanalyzing) return;
       clearTimeout(state.previewDebounce);
       state.previewDebounce = setTimeout(() => {
         refreshPreview(true);
