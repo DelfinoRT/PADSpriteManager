@@ -525,6 +525,10 @@
       previewDebounce: null,
       previewZoom: 4,
       aggressiveness: 3,
+      uploadTicket: 0,
+      isUploading: false,
+      isReanalyzing: false,
+      isExporting: false,
     };
 
     const notices = document.getElementById('notices');
@@ -544,6 +548,27 @@
 
     function clearNotices() {
       notices.innerHTML = '';
+    }
+
+    function isBusy() {
+      return state.isUploading || state.isReanalyzing || state.isExporting;
+    }
+
+    function syncBusyUi() {
+      const busy = isBusy();
+      document.getElementById('upload-btn').disabled = busy;
+      document.getElementById('preview-btn').disabled = busy;
+      document.getElementById('export-btn').disabled = busy;
+      document.getElementById('format-select').disabled = busy;
+      document.getElementById('background-mode-select').disabled = busy;
+      document.getElementById('background-color-input').disabled = busy;
+      document.getElementById('background-color-text').disabled = busy;
+      document.getElementById('file-input').disabled = busy;
+      document.querySelectorAll('.aggr-btn').forEach((b) => {
+        b.disabled = busy;
+      });
+      document.getElementById('drop-zone').style.pointerEvents = busy ? 'none' : '';
+      document.getElementById('drop-zone').style.opacity = busy ? '0.65' : '1';
     }
 
     function setMeta(fileName, size, frames, groups) {
@@ -694,6 +719,10 @@
 
     async function uploadSprite(file) {
       clearNotices();
+      if (isBusy()) {
+        showNotice('Please wait for the current action to finish.', 'info');
+        return;
+      }
       if (!file) {
         showNotice('No file selected.', 'err');
         return;
@@ -707,9 +736,18 @@
       data.append('file', file);
       data.append('aggressiveness', String(state.aggressiveness));
 
+      const ticket = ++state.uploadTicket;
+      state.isUploading = true;
+      state.uploadId = null;
+      syncBusyUi();
+      showNotice('Uploading sprite...', 'info');
+
       try {
         const res = await fetch('/api/recolor/upload', { method: 'POST', body: data });
         const body = await res.json();
+        if (ticket !== state.uploadTicket) {
+          return;
+        }
         if (!res.ok) {
           showNotice(body.error || 'Upload failed.', 'err');
           return;
@@ -733,6 +771,11 @@
         showNotice(`Loaded ${file.name}. Found ${state.groups.length} editable color groups.`, 'ok');
       } catch (err) {
         showNotice('Upload failed: ' + err.message, 'err');
+      } finally {
+        if (ticket === state.uploadTicket) {
+          state.isUploading = false;
+          syncBusyUi();
+        }
       }
     }
 
@@ -744,6 +787,9 @@
         if (!silent) {
           showNotice('Upload a sprite first.', 'err');
         }
+        return;
+      }
+      if (state.isUploading || state.isReanalyzing) {
         return;
       }
 
@@ -758,6 +804,9 @@
         });
         const body = await res.json();
         if (!res.ok) {
+          if (res.status === 404) {
+            state.uploadId = null;
+          }
           if (!silent) {
             showNotice(body.error || 'Preview failed.', 'err');
           }
@@ -776,6 +825,10 @@
 
     async function exportSprite() {
       clearNotices();
+      if (isBusy()) {
+        showNotice('Please wait until processing finishes before downloading.', 'info');
+        return;
+      }
       if (!state.uploadId) {
         showNotice('Upload a sprite first.', 'err');
         return;
@@ -784,6 +837,8 @@
       const format = document.getElementById('format-select').value;
       const backgroundMode = document.getElementById('background-mode-select').value;
       const backgroundColor = document.getElementById('background-color-text').value;
+      state.isExporting = true;
+      syncBusyUi();
       try {
         const res = await fetch('/api/recolor/export', {
           method: 'POST',
@@ -799,6 +854,9 @@
 
         if (!res.ok) {
           const body = await res.json();
+          if (res.status === 404) {
+            state.uploadId = null;
+          }
           showNotice(body.error || 'Export failed.', 'err');
           return;
         }
@@ -813,6 +871,9 @@
         showNotice(`Download complete (${format.toUpperCase()}).`, 'ok');
       } catch (err) {
         showNotice('Export failed: ' + err.message, 'err');
+      } finally {
+        state.isExporting = false;
+        syncBusyUi();
       }
     }
 
@@ -847,6 +908,7 @@
 
     function queuePreview() {
       if (!state.uploadId) return;
+      if (state.isUploading || state.isReanalyzing) return;
       clearTimeout(state.previewDebounce);
       state.previewDebounce = setTimeout(() => {
         refreshPreview(true);
@@ -869,8 +931,14 @@
     });
 
     async function reanalyzeGroups() {
+      if (isBusy()) {
+        showNotice('Please wait for the current action to finish.', 'info');
+        return;
+      }
       if (!state.uploadId) return;
       clearNotices();
+      state.isReanalyzing = true;
+      syncBusyUi();
       try {
         const res = await fetch('/api/recolor/reanalyze', {
           method: 'POST',
@@ -879,6 +947,9 @@
         });
         const body = await res.json();
         if (!res.ok) {
+          if (res.status === 404) {
+            state.uploadId = null;
+          }
           showNotice(body.error || 'Re-analysis failed.', 'err');
           return;
         }
@@ -895,6 +966,9 @@
         queuePreview();
       } catch (err) {
         showNotice('Re-analysis failed: ' + err.message, 'err');
+      } finally {
+        state.isReanalyzing = false;
+        syncBusyUi();
       }
     }
 
@@ -943,6 +1017,7 @@
     syncBackgroundControls();
     applyPreviewZoom();
     setMeta('', '', 0, 0);
+    syncBusyUi();
   </script>
 </body>
 </html>
