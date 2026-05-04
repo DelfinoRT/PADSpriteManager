@@ -286,6 +286,9 @@ def recolor_animation(upload, replacements):
         individual_replacements = {}
         individual_hex = {}
 
+    if not isinstance(group_replacements, dict):
+        group_replacements = {}
+
     normalized_individual = {}
     if isinstance(individual_replacements, dict):
         for group_id, mapping in individual_replacements.items():

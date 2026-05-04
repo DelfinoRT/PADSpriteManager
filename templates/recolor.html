@@ -396,6 +396,71 @@
       padding: 4px 9px;
     }
 
+    .filter-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .filter-row label {
+      font-size: 12px;
+      color: #c8dce4;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .status-bar {
+      position: sticky;
+      bottom: 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 10px;
+      padding: 8px 10px;
+      border: 1px solid #35535f;
+      border-radius: 8px;
+      background: rgba(17, 30, 35, 0.94);
+      backdrop-filter: blur(4px);
+      z-index: 2;
+    }
+
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      background: #8ca8b2;
+      box-shadow: 0 0 10px rgba(140, 168, 178, 0.45);
+      flex: 0 0 auto;
+    }
+
+    .status-dot.ok {
+      background: #49bc95;
+      box-shadow: 0 0 10px rgba(73, 188, 149, 0.45);
+    }
+
+    .status-dot.busy {
+      background: #d6af58;
+      box-shadow: 0 0 10px rgba(214, 175, 88, 0.45);
+    }
+
+    .status-dot.warn {
+      background: #cb5d67;
+      box-shadow: 0 0 10px rgba(203, 93, 103, 0.45);
+    }
+
+    .status-text {
+      color: #d7e8ed;
+      font-size: 12px;
+      letter-spacing: 0.2px;
+    }
+
+    .status-spacer {
+      flex: 1;
+    }
+
     @media (max-width: 1100px) {
       .workspace {
         grid-template-columns: 1fr;
@@ -428,6 +493,11 @@
           </div>
         </label>
         <button class="btn secondary" id="preview-btn">Refresh Preview</button>
+        <label class="inline-control">
+          <input type="checkbox" id="auto-preview-toggle" checked>
+          Auto Preview
+        </label>
+        <button class="btn secondary" id="reset-colors-btn">Reset Recolors</button>
         <label style="font-size:13px; color:#c8dce4;">Export Format
           <select id="format-select">
             <option value="gif" selected>GIF</option>
@@ -457,6 +527,13 @@
       </div>
 
       <div id="notices"></div>
+      <div class="status-bar">
+        <span class="status-dot" id="status-dot"></span>
+        <span class="status-text" id="status-text">No sprite loaded.</span>
+        <span class="status-spacer"></span>
+        <button class="btn secondary" id="undo-btn" title="Undo (Ctrl+Z)">Undo</button>
+        <button class="btn secondary" id="redo-btn" title="Redo (Ctrl+Y or Ctrl+Shift+Z)">Redo</button>
+      </div>
     </section>
 
     <section class="panel">
@@ -465,6 +542,17 @@
         <span class="chip" id="chip-size">Size: -</span>
         <span class="chip" id="chip-frames">Frames: 0</span>
         <span class="chip" id="chip-groups">Groups: 0</span>
+        <span class="chip" id="chip-changes">Changes: 0</span>
+      </div>
+
+      <div class="filter-row">
+        <label>Filter Colors
+          <input type="text" id="filter-individual-input" placeholder="hex or group id">
+        </label>
+        <label>Filter Groups
+          <input type="text" id="filter-groups-input" placeholder="group id or hex">
+        </label>
+        <button class="btn secondary" id="clear-filters-btn">Clear Filters</button>
       </div>
 
       <div class="workspace">
@@ -529,6 +617,11 @@
       isUploading: false,
       isReanalyzing: false,
       isExporting: false,
+      autoPreview: true,
+      filterIndividual: '',
+      filterGroups: '',
+      history: [],
+      historyIndex: -1,
     };
 
     const notices = document.getElementById('notices');
@@ -550,25 +643,154 @@
       notices.innerHTML = '';
     }
 
+    function cloneMap(map) {
+      return Object.assign({}, map || {});
+    }
+
+    function snapshotRecolors() {
+      return {
+        replacements: cloneMap(state.replacements),
+        individualHexReplacements: cloneMap(state.individualHexReplacements),
+      };
+    }
+
+    function snapshotsEqual(a, b) {
+      return JSON.stringify(a) === JSON.stringify(b);
+    }
+
+    function updateStatusBar() {
+      const dot = document.getElementById('status-dot');
+      const text = document.getElementById('status-text');
+
+      dot.classList.remove('ok', 'busy', 'warn');
+      if (state.isUploading) {
+        dot.classList.add('busy');
+        text.textContent = 'Uploading sprite...';
+        return;
+      }
+      if (state.isReanalyzing) {
+        dot.classList.add('busy');
+        text.textContent = `Re-analyzing groups at detail level ${state.aggressiveness}...`;
+        return;
+      }
+      if (state.isExporting) {
+        dot.classList.add('busy');
+        text.textContent = 'Generating export...';
+        return;
+      }
+      if (!state.uploadId) {
+        dot.classList.add('warn');
+        text.textContent = 'No sprite loaded.';
+        return;
+      }
+
+      dot.classList.add('ok');
+      const historyCount = state.history.length;
+      const step = state.historyIndex >= 0 ? state.historyIndex + 1 : 0;
+      text.textContent = `Ready • ${countChanges()} changes • Auto Preview ${state.autoPreview ? 'On' : 'Off'} • History ${step}/${historyCount}`;
+    }
+
+    function updateUndoRedoUi() {
+      const busy = isBusy();
+      const hasUpload = hasActiveUpload();
+      document.getElementById('undo-btn').disabled = busy || !hasUpload || state.historyIndex <= 0;
+      document.getElementById('redo-btn').disabled = busy || !hasUpload || state.historyIndex >= state.history.length - 1;
+    }
+
+    function initHistory() {
+      state.history = [snapshotRecolors()];
+      state.historyIndex = 0;
+      updateUndoRedoUi();
+      updateStatusBar();
+    }
+
+    function pushHistory() {
+      if (!state.uploadId) {
+        return;
+      }
+      const next = snapshotRecolors();
+      const current = state.history[state.historyIndex];
+      if (current && snapshotsEqual(current, next)) {
+        updateUndoRedoUi();
+        updateStatusBar();
+        return;
+      }
+
+      state.history = state.history.slice(0, state.historyIndex + 1);
+      state.history.push(next);
+      if (state.history.length > 100) {
+        state.history.shift();
+      }
+      state.historyIndex = state.history.length - 1;
+      updateUndoRedoUi();
+      updateStatusBar();
+    }
+
+    function applyHistorySnapshot(index) {
+      const snap = state.history[index];
+      if (!snap) {
+        return;
+      }
+      state.historyIndex = index;
+      state.replacements = cloneMap(snap.replacements);
+      state.individualHexReplacements = cloneMap(snap.individualHexReplacements);
+      renderOriginalIndividualColors();
+      renderRecolorIndividualColors();
+      renderGroups();
+      updateChangeChip();
+      updateUndoRedoUi();
+      updateStatusBar();
+      queuePreview();
+    }
+
+    function undoRecolor() {
+      if (state.historyIndex <= 0 || isBusy()) {
+        return;
+      }
+      applyHistorySnapshot(state.historyIndex - 1);
+      showNotice('Undid last recolor change.', 'info');
+    }
+
+    function redoRecolor() {
+      if (state.historyIndex >= state.history.length - 1 || isBusy()) {
+        return;
+      }
+      applyHistorySnapshot(state.historyIndex + 1);
+      showNotice('Redid recolor change.', 'info');
+    }
+
     function isBusy() {
       return state.isUploading || state.isReanalyzing || state.isExporting;
     }
 
+    function hasActiveUpload() {
+      return Boolean(state.uploadId);
+    }
+
     function syncBusyUi() {
       const busy = isBusy();
+      const hasUpload = hasActiveUpload();
       document.getElementById('upload-btn').disabled = busy;
-      document.getElementById('preview-btn').disabled = busy;
-      document.getElementById('export-btn').disabled = busy;
-      document.getElementById('format-select').disabled = busy;
-      document.getElementById('background-mode-select').disabled = busy;
-      document.getElementById('background-color-input').disabled = busy;
-      document.getElementById('background-color-text').disabled = busy;
+      document.getElementById('preview-btn').disabled = busy || !hasUpload;
+      document.getElementById('reset-colors-btn').disabled = busy || !hasUpload;
+      document.getElementById('auto-preview-toggle').disabled = busy || !hasUpload;
+      document.getElementById('export-btn').disabled = busy || !hasUpload;
+      document.getElementById('format-select').disabled = busy || !hasUpload;
+      document.getElementById('background-mode-select').disabled = busy || !hasUpload;
+      document.getElementById('background-color-input').disabled = busy || !hasUpload;
+      document.getElementById('background-color-text').disabled = busy || !hasUpload;
+      document.getElementById('clear-btn').disabled = busy || !hasUpload;
+      document.getElementById('filter-individual-input').disabled = busy || !hasUpload;
+      document.getElementById('filter-groups-input').disabled = busy || !hasUpload;
+      document.getElementById('clear-filters-btn').disabled = busy || !hasUpload;
       document.getElementById('file-input').disabled = busy;
       document.querySelectorAll('.aggr-btn').forEach((b) => {
-        b.disabled = busy;
+        b.disabled = busy || !hasUpload;
       });
       document.getElementById('drop-zone').style.pointerEvents = busy ? 'none' : '';
       document.getElementById('drop-zone').style.opacity = busy ? '0.65' : '1';
+      updateUndoRedoUi();
+      updateStatusBar();
     }
 
     function setMeta(fileName, size, frames, groups) {
@@ -578,11 +800,40 @@
       document.getElementById('chip-groups').textContent = 'Groups: ' + String(groups || 0);
     }
 
+    function countChanges() {
+      let groupChanges = 0;
+      state.groups.forEach((group) => {
+        const current = (state.replacements[group.id] || group.hex || '').toLowerCase();
+        const original = (group.hex || '').toLowerCase();
+        if (current && original && current !== original) {
+          groupChanges += 1;
+        }
+      });
+      const individualChanges = Object.keys(state.individualHexReplacements || {}).length;
+      return groupChanges + individualChanges;
+    }
+
+    function updateChangeChip() {
+      document.getElementById('chip-changes').textContent = 'Changes: ' + String(countChanges());
+      updateStatusBar();
+      updateUndoRedoUi();
+    }
+
     function renderOriginalIndividualColors() {
       const list = document.getElementById('original-individual-list');
       list.innerHTML = '';
 
-      state.individualColors.forEach((colorInfo, idx) => {
+      const needle = (state.filterIndividual || '').trim().toLowerCase();
+      const filtered = state.individualColors.filter((colorInfo) => {
+        if (!needle) {
+          return true;
+        }
+        const sourceHex = (colorInfo.hex || '').toLowerCase();
+        const groupsText = (colorInfo.groups || []).join(', ').toLowerCase();
+        return sourceHex.includes(needle) || groupsText.includes(needle);
+      });
+
+      filtered.forEach((colorInfo, idx) => {
         const sourceHex = (colorInfo.hex || '').toLowerCase();
         const groupsText = (colorInfo.groups || []).join(', ');
         const row = document.createElement('div');
@@ -602,7 +853,17 @@
       const list = document.getElementById('recolor-individual-list');
       list.innerHTML = '';
 
-      state.individualColors.forEach((colorInfo, idx) => {
+      const needle = (state.filterIndividual || '').trim().toLowerCase();
+      const filtered = state.individualColors.filter((colorInfo) => {
+        if (!needle) {
+          return true;
+        }
+        const sourceHex = (colorInfo.hex || '').toLowerCase();
+        const groupsText = (colorInfo.groups || []).join(', ').toLowerCase();
+        return sourceHex.includes(needle) || groupsText.includes(needle);
+      });
+
+      filtered.forEach((colorInfo, idx) => {
         const sourceHex = (colorInfo.hex || '').toLowerCase();
         const current = state.individualHexReplacements[sourceHex] || sourceHex;
 
@@ -634,6 +895,8 @@
           } else {
             state.individualHexReplacements[sourceHex] = next;
           }
+          updateChangeChip();
+          pushHistory();
           queuePreview();
         });
 
@@ -646,6 +909,8 @@
             } else {
               state.individualHexReplacements[sourceHex] = value;
             }
+            updateChangeChip();
+            pushHistory();
             queuePreview();
           }
         });
@@ -658,7 +923,15 @@
       original.innerHTML = '';
       replacement.innerHTML = '';
 
-      state.groups.forEach((group, idx) => {
+      const needle = (state.filterGroups || '').trim().toLowerCase();
+      const filtered = state.groups.filter((group) => {
+        if (!needle) {
+          return true;
+        }
+        return (group.id || '').toLowerCase().includes(needle) || (group.hex || '').toLowerCase().includes(needle);
+      });
+
+      filtered.forEach((group, idx) => {
         const rowA = document.createElement('div');
         rowA.className = 'group-row';
         rowA.innerHTML = `
@@ -691,6 +964,8 @@
         picker.addEventListener('input', () => {
           text.value = picker.value;
           state.replacements[group.id] = picker.value;
+          updateChangeChip();
+          pushHistory();
           queuePreview();
         });
 
@@ -699,6 +974,8 @@
           if (/^#[0-9a-fA-F]{6}$/.test(value)) {
             picker.value = value;
             state.replacements[group.id] = value;
+            updateChangeChip();
+            pushHistory();
             queuePreview();
           }
         });
@@ -760,11 +1037,13 @@
         state.replacements = {};
         state.individualHexReplacements = {};
         state.groups.forEach(g => { state.replacements[g.id] = g.hex; });
+        initHistory();
 
         renderOriginalIndividualColors();
         renderRecolorIndividualColors();
         renderGroups();
         setMeta(file.name, `${body.size[0]}x${body.size[1]}`, body.frame_count, state.groups.length);
+        updateChangeChip();
 
         document.getElementById('before-preview').src = body.original_preview;
         document.getElementById('after-preview').src = body.original_preview;
@@ -780,10 +1059,12 @@
     }
 
     async function refreshPreview(silent = false) {
+      const requestUploadId = state.uploadId;
+      const requestTicket = state.uploadTicket;
       if (!silent) {
         clearNotices();
       }
-      if (!state.uploadId) {
+      if (!requestUploadId) {
         if (!silent) {
           showNotice('Upload a sprite first.', 'err');
         }
@@ -795,14 +1076,18 @@
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            upload_id: state.uploadId,
+            upload_id: requestUploadId,
             replacements: buildRecolorPayload(),
           }),
         });
         const body = await res.json();
+        if (requestTicket !== state.uploadTicket || requestUploadId !== state.uploadId) {
+          return;
+        }
         if (!res.ok) {
           if (res.status === 404) {
             state.uploadId = null;
+            syncBusyUi();
           }
           if (!silent) {
             showNotice(body.error || 'Preview failed.', 'err');
@@ -826,7 +1111,9 @@
         showNotice('Please wait until processing finishes before downloading.', 'info');
         return;
       }
-      if (!state.uploadId) {
+      const requestUploadId = state.uploadId;
+      const requestTicket = state.uploadTicket;
+      if (!requestUploadId) {
         showNotice('Upload a sprite first.', 'err');
         return;
       }
@@ -841,7 +1128,7 @@
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            upload_id: state.uploadId,
+            upload_id: requestUploadId,
             replacements: buildRecolorPayload(),
             format,
             background_mode: backgroundMode,
@@ -849,10 +1136,15 @@
           }),
         });
 
+        if (requestTicket !== state.uploadTicket || requestUploadId !== state.uploadId) {
+          return;
+        }
+
         if (!res.ok) {
           const body = await res.json();
           if (res.status === 404) {
             state.uploadId = null;
+            syncBusyUi();
           }
           showNotice(body.error || 'Export failed.', 'err');
           return;
@@ -876,12 +1168,14 @@
 
     async function clearSession() {
       clearNotices();
-      if (state.uploadId) {
+      const currentUploadId = state.uploadId;
+      state.uploadTicket += 1;
+      if (currentUploadId) {
         try {
           await fetch('/api/recolor/clear', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ upload_id: state.uploadId }),
+            body: JSON.stringify({ upload_id: currentUploadId }),
           });
         } catch (_) {
           // Ignore cleanup errors and still reset the UI.
@@ -894,21 +1188,46 @@
       state.groups = [];
       state.replacements = {};
       state.individualHexReplacements = {};
+      state.history = [];
+      state.historyIndex = -1;
+      state.filterIndividual = '';
+      state.filterGroups = '';
+      document.getElementById('filter-individual-input').value = '';
+      document.getElementById('filter-groups-input').value = '';
       renderOriginalIndividualColors();
       renderRecolorIndividualColors();
       renderGroups();
       setMeta('', '', 0, 0);
+      updateChangeChip();
       document.getElementById('before-preview').src = '';
       document.getElementById('after-preview').src = '';
+      syncBusyUi();
       showNotice('Cleared current sprite.', 'ok');
     }
 
     function queuePreview() {
-      if (!state.uploadId) return;
+      if (!state.autoPreview || !state.uploadId || isBusy()) return;
       clearTimeout(state.previewDebounce);
       state.previewDebounce = setTimeout(() => {
         refreshPreview(true);
       }, 60);
+    }
+
+    function resetRecolors() {
+      if (!state.uploadId || state.groups.length === 0) {
+        return;
+      }
+      state.replacements = {};
+      state.groups.forEach((group) => {
+        state.replacements[group.id] = group.hex;
+      });
+      state.individualHexReplacements = {};
+      renderRecolorIndividualColors();
+      renderGroups();
+      updateChangeChip();
+      pushHistory();
+      queuePreview();
+      showNotice('Recolor changes reset to original colors.', 'ok');
     }
 
     document.getElementById('upload-btn').addEventListener('click', () => {
@@ -916,8 +1235,52 @@
     });
 
     document.getElementById('preview-btn').addEventListener('click', refreshPreview);
+    document.getElementById('reset-colors-btn').addEventListener('click', resetRecolors);
+    document.getElementById('undo-btn').addEventListener('click', undoRecolor);
+    document.getElementById('redo-btn').addEventListener('click', redoRecolor);
     document.getElementById('export-btn').addEventListener('click', exportSprite);
     document.getElementById('clear-btn').addEventListener('click', clearSession);
+    document.getElementById('auto-preview-toggle').addEventListener('change', (event) => {
+      state.autoPreview = event.target.checked;
+      updateStatusBar();
+      if (state.autoPreview && state.uploadId) {
+        queuePreview();
+      }
+    });
+
+    document.getElementById('filter-individual-input').addEventListener('input', (event) => {
+      state.filterIndividual = event.target.value || '';
+      renderOriginalIndividualColors();
+      renderRecolorIndividualColors();
+    });
+
+    document.getElementById('filter-groups-input').addEventListener('input', (event) => {
+      state.filterGroups = event.target.value || '';
+      renderGroups();
+    });
+
+    document.getElementById('clear-filters-btn').addEventListener('click', () => {
+      state.filterIndividual = '';
+      state.filterGroups = '';
+      document.getElementById('filter-individual-input').value = '';
+      document.getElementById('filter-groups-input').value = '';
+      renderOriginalIndividualColors();
+      renderRecolorIndividualColors();
+      renderGroups();
+      showNotice('Filters cleared.', 'info');
+    });
+
+    document.addEventListener('keydown', (event) => {
+      const isUndo = (event.ctrlKey || event.metaKey) && !event.shiftKey && event.key.toLowerCase() === 'z';
+      const isRedo = (event.ctrlKey || event.metaKey) && (event.key.toLowerCase() === 'y' || (event.shiftKey && event.key.toLowerCase() === 'z'));
+      if (isUndo) {
+        event.preventDefault();
+        undoRecolor();
+      } else if (isRedo) {
+        event.preventDefault();
+        redoRecolor();
+      }
+    });
 
     document.getElementById('file-input').addEventListener('change', (event) => {
       if (event.target.files && event.target.files[0]) {
@@ -927,11 +1290,13 @@
     });
 
     async function reanalyzeGroups() {
+      const requestUploadId = state.uploadId;
+      const requestTicket = state.uploadTicket;
       if (isBusy()) {
         showNotice('Please wait for the current action to finish.', 'info');
         return;
       }
-      if (!state.uploadId) return;
+      if (!requestUploadId) return;
       clearNotices();
       state.isReanalyzing = true;
       syncBusyUi();
@@ -939,12 +1304,16 @@
         const res = await fetch('/api/recolor/reanalyze', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ upload_id: state.uploadId, aggressiveness: state.aggressiveness }),
+          body: JSON.stringify({ upload_id: requestUploadId, aggressiveness: state.aggressiveness }),
         });
         const body = await res.json();
+        if (requestTicket !== state.uploadTicket || requestUploadId !== state.uploadId) {
+          return;
+        }
         if (!res.ok) {
           if (res.status === 404) {
             state.uploadId = null;
+            syncBusyUi();
           }
           showNotice(body.error || 'Re-analysis failed.', 'err');
           return;
@@ -954,9 +1323,11 @@
         state.replacements = {};
         state.groups.forEach(g => { state.replacements[g.id] = g.hex; });
         state.individualHexReplacements = {};
+        initHistory();
         renderOriginalIndividualColors();
         renderRecolorIndividualColors();
         renderGroups();
+        updateChangeChip();
         document.getElementById('chip-groups').textContent = 'Groups: ' + state.groups.length;
         showNotice(`Re-analyzed: ${state.groups.length} groups at detail level ${state.aggressiveness}.`, 'ok');
         queuePreview();
@@ -1013,6 +1384,7 @@
     syncBackgroundControls();
     applyPreviewZoom();
     setMeta('', '', 0, 0);
+    updateChangeChip();
     syncBusyUi();
   </script>
 </body>
