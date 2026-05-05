@@ -1,6 +1,6 @@
 from flask import Flask, request, jsonify, render_template, send_file
 from PIL import Image, ImageSequence
-import io, base64, colorsys, math
+import io, base64, colorsys, math, json, time
 from pathlib import Path
 from uuid import uuid4
 
@@ -11,6 +11,113 @@ parts = ['part1', 'part2', 'part3', 'part4']
 # One uploaded sheet == one output row/frame
 outfit_frames = []
 recolor_uploads = {}
+UPLOAD_CACHE_DIR = Path(app.root_path) / '.recolor_upload_cache'
+UPLOAD_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def clamp_aggressiveness(value):
+    try:
+        return max(1, min(5, int(value)))
+    except (TypeError, ValueError):
+        return 3
+
+
+def upload_cache_blob_path(upload_id):
+    return UPLOAD_CACHE_DIR / f'{upload_id}.bin'
+
+
+def upload_cache_meta_path(upload_id):
+    return UPLOAD_CACHE_DIR / f'{upload_id}.json'
+
+
+def write_upload_cache(upload_id, source_bytes, aggressiveness):
+    if not source_bytes:
+        return
+    upload_cache_blob_path(upload_id).write_bytes(source_bytes)
+    upload_cache_meta_path(upload_id).write_text(
+        json.dumps({
+            'aggressiveness': clamp_aggressiveness(aggressiveness),
+            'updated_at': int(time.time()),
+        }),
+        encoding='utf-8',
+    )
+
+
+def read_upload_cache(upload_id):
+    blob_path = upload_cache_blob_path(upload_id)
+    meta_path = upload_cache_meta_path(upload_id)
+    if not blob_path.exists() or not meta_path.exists():
+        return None
+
+    try:
+        meta = json.loads(meta_path.read_text(encoding='utf-8') or '{}')
+    except json.JSONDecodeError:
+        meta = {}
+
+    return {
+        'source_bytes': blob_path.read_bytes(),
+        'aggressiveness': clamp_aggressiveness(meta.get('aggressiveness', 3)),
+    }
+
+
+def delete_upload_cache(upload_id):
+    upload_cache_blob_path(upload_id).unlink(missing_ok=True)
+    upload_cache_meta_path(upload_id).unlink(missing_ok=True)
+
+
+def purge_upload_cache(max_entries=96, max_age_seconds=6 * 60 * 60):
+    now = int(time.time())
+    items = []
+    for meta_path in UPLOAD_CACHE_DIR.glob('*.json'):
+        upload_id = meta_path.stem
+        blob_path = upload_cache_blob_path(upload_id)
+        if not blob_path.exists():
+            meta_path.unlink(missing_ok=True)
+            continue
+        mtime = int(meta_path.stat().st_mtime)
+        age = now - mtime
+        if age > max_age_seconds:
+            blob_path.unlink(missing_ok=True)
+            meta_path.unlink(missing_ok=True)
+            continue
+        items.append((mtime, upload_id))
+
+    if len(items) <= max_entries:
+        return
+
+    items.sort()
+    for _, upload_id in items[:len(items) - max_entries]:
+        delete_upload_cache(upload_id)
+
+
+def hydrate_upload_from_cache(upload_id, aggressiveness_hint=None):
+    cached = read_upload_cache(upload_id)
+    if not cached:
+        return None
+
+    source_bytes = cached['source_bytes']
+    aggressiveness = clamp_aggressiveness(
+        cached['aggressiveness'] if aggressiveness_hint is None else aggressiveness_hint
+    )
+    threshold = AGGRESSIVENESS_THRESHOLDS[aggressiveness]
+
+    parsed = extract_animation(io.BytesIO(source_bytes))
+    groups, by_key = analyze_color_groups(parsed['frames'], merge_threshold=threshold)
+    if not groups:
+        return None
+
+    upload = {
+        'frames': parsed['frames'],
+        'durations': parsed['durations'],
+        'loop': parsed['loop'],
+        'source_format': parsed['source_format'],
+        'groups': groups,
+        'groups_by_key': by_key,
+        'source_bytes': source_bytes,
+        'aggressiveness': aggressiveness,
+    }
+    recolor_uploads[upload_id] = upload
+    return upload
 
 
 def to_b64(img):
@@ -689,11 +796,11 @@ def recolor_upload():
     if not file_obj:
         return jsonify({'error': 'No file uploaded.'}), 400
 
+    source_bytes = file_obj.read()
     try:
-        aggressiveness = int(request.form.get('aggressiveness', 3))
-        aggressiveness = max(1, min(5, aggressiveness))
+        aggressiveness = clamp_aggressiveness(request.form.get('aggressiveness', 3))
         threshold = AGGRESSIVENESS_THRESHOLDS[aggressiveness]
-        parsed = extract_animation(file_obj)
+        parsed = extract_animation(io.BytesIO(source_bytes))
         groups, by_key = analyze_color_groups(parsed['frames'], merge_threshold=threshold)
     except Exception as exc:
         return jsonify({'error': f'Unable to read sprite: {exc}'}), 400
@@ -709,7 +816,12 @@ def recolor_upload():
         'source_format': parsed['source_format'],
         'groups': groups,
         'groups_by_key': by_key,
+        'source_bytes': source_bytes,
+        'aggressiveness': aggressiveness,
     }
+
+    write_upload_cache(upload_id, source_bytes, aggressiveness)
+    purge_upload_cache()
 
     # Keep memory bounded for iterative use.
     while len(recolor_uploads) > 24:
@@ -771,12 +883,13 @@ def recolor_upload():
 def recolor_reanalyze():
     body = request.get_json(force=True, silent=True) or {}
     upload_id = body.get('upload_id', '')
+    aggressiveness = clamp_aggressiveness(body.get('aggressiveness', 3))
     upload = recolor_uploads.get(upload_id)
+    if not upload:
+        upload = hydrate_upload_from_cache(upload_id, aggressiveness_hint=aggressiveness)
     if not upload:
         return jsonify({'error': 'Upload not found. Please re-upload the sprite.'}), 404
 
-    aggressiveness = int(body.get('aggressiveness', 3))
-    aggressiveness = max(1, min(5, aggressiveness))
     threshold = AGGRESSIVENESS_THRESHOLDS[aggressiveness]
 
     try:
@@ -789,6 +902,8 @@ def recolor_reanalyze():
 
     upload['groups'] = groups
     upload['groups_by_key'] = by_key
+    upload['aggressiveness'] = aggressiveness
+    write_upload_cache(upload_id, upload.get('source_bytes'), aggressiveness)
 
     individual_counts = {}
     individual_group_refs = {}
@@ -835,6 +950,8 @@ def recolor_preview():
     upload_id = payload.get('upload_id')
     upload = recolor_uploads.get(upload_id)
     if not upload:
+        upload = hydrate_upload_from_cache(upload_id)
+    if not upload:
         return jsonify({'error': 'Sprite upload not found. Please upload again.'}), 404
 
     replacements = payload.get('replacements', {}) or {}
@@ -857,6 +974,8 @@ def recolor_export():
     payload = request.json or {}
     upload_id = payload.get('upload_id')
     upload = recolor_uploads.get(upload_id)
+    if not upload:
+        upload = hydrate_upload_from_cache(upload_id)
     if not upload:
         return jsonify({'error': 'Sprite upload not found. Please upload again.'}), 404
 
@@ -893,6 +1012,7 @@ def recolor_clear():
     upload_id = payload.get('upload_id')
     if upload_id:
         recolor_uploads.pop(upload_id, None)
+        delete_upload_cache(upload_id)
     return jsonify({'ok': True})
 
 

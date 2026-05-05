@@ -3,12 +3,18 @@ import unittest
 
 from PIL import Image
 
-from app import app, recolor_uploads
+from app import app, recolor_uploads, delete_upload_cache
 
 
 class RecolorServiceTests(unittest.TestCase):
     def setUp(self):
         self.client = app.test_client()
+        recolor_uploads.clear()
+
+    def tearDown(self):
+        # Best-effort cleanup for any cache files created by tests.
+        for upload_id in list(recolor_uploads.keys()):
+            delete_upload_cache(upload_id)
         recolor_uploads.clear()
 
     @staticmethod
@@ -134,6 +140,49 @@ class RecolorServiceTests(unittest.TestCase):
         self.assertEqual(response.status_code, 400)
         body = response.get_json()
         self.assertIn('Unsupported export format', body.get('error', ''))
+
+    def test_routes_hydrate_when_memory_state_is_missing(self):
+        upload_id = self._upload_sprite()
+
+        # Simulate process/worker memory loss between requests.
+        recolor_uploads.clear()
+
+        reanalyze_response = self.client.post(
+            '/api/recolor/reanalyze',
+            json={'upload_id': upload_id, 'aggressiveness': 5},
+        )
+        self.assertEqual(reanalyze_response.status_code, 200)
+
+        preview_response = self.client.post(
+            '/api/recolor/preview',
+            json={
+                'upload_id': upload_id,
+                'replacements': {'group': {}, 'individual_hex': {}},
+            },
+        )
+        self.assertEqual(preview_response.status_code, 200)
+        preview_body = preview_response.get_json()
+        self.assertTrue((preview_body.get('preview') or '').startswith('data:image/gif;base64,'))
+
+        export_response = self.client.post(
+            '/api/recolor/export',
+            json={
+                'upload_id': upload_id,
+                'replacements': {'group': {}, 'individual_hex': {}},
+                'format': 'gif',
+            },
+        )
+        self.assertEqual(export_response.status_code, 200)
+        self.assertEqual(export_response.headers.get('Content-Type'), 'image/gif')
+
+        clear_response = self.client.post('/api/recolor/clear', json={'upload_id': upload_id})
+        self.assertEqual(clear_response.status_code, 200)
+
+        missing_after_clear = self.client.post(
+            '/api/recolor/reanalyze',
+            json={'upload_id': upload_id, 'aggressiveness': 3},
+        )
+        self.assertEqual(missing_after_clear.status_code, 404)
 
 
 if __name__ == '__main__':
