@@ -82,6 +82,7 @@
       padding: 12px;
       margin-bottom: 12px;
       box-shadow: 0 10px 26px rgba(0, 0, 0, 0.22);
+      overflow: visible;
     }
 
     .controls {
@@ -643,6 +644,44 @@
       notices.innerHTML = '';
     }
 
+    function findScrollableAncestor(el) {
+      let node = el ? el.parentElement : null;
+      while (node && node !== document.body) {
+        const style = window.getComputedStyle(node);
+        const overflowY = style.overflowY;
+        const canScroll = (overflowY === 'auto' || overflowY === 'scroll') && node.scrollHeight > node.clientHeight;
+        if (canScroll) {
+          return node;
+        }
+        node = node.parentElement;
+      }
+      return null;
+    }
+
+    function ensureColorPickerSpace(inputEl) {
+      const rect = inputEl.getBoundingClientRect();
+      const desiredBelow = 290;
+      const missingBelow = rect.bottom + desiredBelow - window.innerHeight;
+
+      if (missingBelow > 0) {
+        const scroller = findScrollableAncestor(inputEl);
+        if (scroller) {
+          scroller.scrollTop += missingBelow + 12;
+        } else {
+          window.scrollBy({ top: missingBelow + 12, left: 0, behavior: 'auto' });
+        }
+      }
+    }
+
+    function attachPickerVisibilityGuard(inputEl) {
+      inputEl.addEventListener('pointerdown', () => {
+        ensureColorPickerSpace(inputEl);
+      });
+      inputEl.addEventListener('focus', () => {
+        ensureColorPickerSpace(inputEl);
+      });
+    }
+
     function cloneMap(map) {
       return Object.assign({}, map || {});
     }
@@ -886,6 +925,7 @@
 
         const picker = row.querySelector(`#any-picker-${idx}`);
         const text = row.querySelector(`#any-text-${idx}`);
+        attachPickerVisibilityGuard(picker);
 
         picker.addEventListener('input', () => {
           const next = picker.value.toLowerCase();
@@ -960,6 +1000,7 @@
 
         const picker = rowB.querySelector('#picker-' + group.id);
         const text = rowB.querySelector('#text-' + group.id);
+        attachPickerVisibilityGuard(picker);
 
         picker.addEventListener('input', () => {
           text.value = picker.value;
