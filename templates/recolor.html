@@ -1088,8 +1088,9 @@
           if (res.status === 404) {
             state.uploadId = null;
             syncBusyUi();
-          }
-          if (!silent) {
+            // Always notify on upload-gone — user must re-upload regardless of silent mode.
+            showNotice((body.error || 'Sprite session expired. Please re-upload.'), 'err');
+          } else if (!silent) {
             showNotice(body.error || 'Preview failed.', 'err');
           }
           return;
@@ -1336,6 +1337,7 @@
       } finally {
         state.isReanalyzing = false;
         syncBusyUi();
+        queuePreview();
       }
     }
 
