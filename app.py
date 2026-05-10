@@ -1,6 +1,6 @@
 from flask import Flask, request, jsonify, render_template, send_file
 from PIL import Image, ImageSequence
-import io, base64, colorsys, math, json, time
+import io, base64, colorsys, math, json, time, zipfile
 from pathlib import Path
 from uuid import uuid4
 
@@ -1014,6 +1014,78 @@ def recolor_clear():
         recolor_uploads.pop(upload_id, None)
         delete_upload_cache(upload_id)
     return jsonify({'ok': True})
+
+
+NONCOLORED_160_SPRITE_SIZE = 160
+NONCOLORED_160_MAX_FILES = 50
+
+
+def flatten_noncolored_160_sheet(img):
+    """Take a 160x160 sprite sheet with 3 sprites on top row + 1 on bottom-left,
+    and return a single-row sheet with all 4 sprites (640x160)."""
+    ss = NONCOLORED_160_SPRITE_SIZE
+    img = img.convert('RGBA')
+    out = Image.new('RGBA', (ss * 4, ss), (0, 0, 0, 0))
+    # Copy the 3 top-row sprites
+    for col in range(3):
+        x = col * ss
+        sprite = img.crop((x, 0, x + ss, ss))
+        out.paste(sprite, (x, 0))
+    # Move the bottom-left sprite to the 4th position
+    sprite4 = img.crop((0, ss, ss, ss * 2))
+    out.paste(sprite4, (ss * 3, 0))
+    return out
+
+
+@app.route('/noncolored/160')
+def noncolored_160_lab():
+    return render_template('noncolored_160.html')
+
+
+@app.route('/api/noncolored/160/process', methods=['POST'])
+def noncolored_160_process():
+    files = request.files.getlist('files')
+    if not files:
+        return jsonify({'error': 'No files uploaded.'}), 400
+    if len(files) > NONCOLORED_160_MAX_FILES:
+        return jsonify({'error': f'Too many files. Maximum is {NONCOLORED_160_MAX_FILES}.'}), 400
+
+    # Sort files alphabetically by filename
+    files = sorted(files, key=lambda f: (f.filename or '').lower())
+
+    results = []
+    errors = []
+    for f in files:
+        fname = f.filename or 'sprite.png'
+        try:
+            img = Image.open(f)
+            out_img = flatten_noncolored_160_sheet(img)
+            buf = io.BytesIO()
+            out_img.save(buf, 'PNG')
+            buf.seek(0)
+            results.append({'name': fname, 'data': buf.getvalue()})
+        except Exception as exc:
+            errors.append(f'{fname}: {exc}')
+
+    if errors and not results:
+        return jsonify({'error': '; '.join(errors)}), 400
+
+    if len(results) == 1:
+        buf = io.BytesIO(results[0]['data'])
+        buf.seek(0)
+        stem = Path(results[0]['name']).stem
+        return send_file(buf, mimetype='image/png', as_attachment=True,
+                         download_name=f'{stem}_flat.png')
+
+    # Multiple files → ZIP
+    zip_buf = io.BytesIO()
+    with zipfile.ZipFile(zip_buf, 'w', zipfile.ZIP_DEFLATED) as zf:
+        for r in results:
+            stem = Path(r['name']).stem
+            zf.writestr(f'{stem}_flat.png', r['data'])
+    zip_buf.seek(0)
+    return send_file(zip_buf, mimetype='application/zip', as_attachment=True,
+                     download_name='noncolored_flat.zip')
 
 
 if __name__ == '__main__':

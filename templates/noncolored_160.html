@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Non-Colored Outfits 160x160</title>
+  <style>
+    :root {
+      --bg-a: #0e1a1e;
+      --bg-b: #1b2a22;
+      --panel: #152025;
+      --panel-soft: #1c2b2f;
+      --line: #35535f;
+      --line-strong: #4f7988;
+      --text: #ddedf2;
+      --muted: #9eb6bf;
+      --accent: #2fa37f;
+      --accent-strong: #39c99e;
+      --warn: #cb5d67;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      min-height: 100vh;
+      background:
+        radial-gradient(700px 450px at 10% 8%, rgba(56, 152, 127, 0.25), transparent 62%),
+        radial-gradient(700px 500px at 90% 92%, rgba(60, 111, 132, 0.22), transparent 64%),
+        linear-gradient(160deg, var(--bg-a) 0%, #0b1418 52%, var(--bg-b) 100%);
+      color: var(--text);
+      font-family: "Trebuchet MS", "Lucida Sans Unicode", "Lucida Grande", sans-serif;
+      padding: 18px;
+    }
+
+    .wrap { max-width: 900px; margin: 0 auto; }
+
+    .brand-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 58px;
+      height: 58px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: rgba(14, 27, 31, 0.82);
+      margin-bottom: 10px;
+      transition: border-color 0.15s ease, transform 0.15s ease;
+    }
+    .brand-link:hover { border-color: var(--line-strong); transform: translateY(-1px); }
+    .brand-link img { width: 40px; height: 40px; display: block; object-fit: contain; }
+
+    h1 { font-size: 22px; color: var(--text); margin-bottom: 4px; }
+    .subtitle { color: var(--muted); font-size: 13px; margin-bottom: 20px; }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+    .panel-title {
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--muted);
+      margin-bottom: 14px;
+    }
+
+    /* Drop zone */
+    .drop-zone {
+      border: 2px dashed var(--line);
+      border-radius: 10px;
+      padding: 36px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.15s ease, background 0.15s ease;
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .drop-zone:hover,
+    .drop-zone.drag-over {
+      border-color: var(--accent);
+      background: rgba(47, 163, 127, 0.06);
+      color: var(--accent-strong);
+    }
+    .drop-zone input[type="file"] { display: none; }
+    .drop-zone .drop-label { pointer-events: none; }
+    .drop-zone .drop-hint { font-size: 12px; margin-top: 6px; color: var(--muted); }
+
+    /* File list */
+    .file-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 14px;
+    }
+    .file-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--panel-soft);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 8px 10px;
+    }
+    .file-row .thumb-wrap {
+      flex-shrink: 0;
+      width: 80px;
+      height: 40px;
+      background: repeating-conic-gradient(#1e3040 0% 25%, transparent 0% 50%) 0 0 / 10px 10px;
+      border-radius: 4px;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .file-row .thumb-wrap img {
+      max-width: 100%;
+      max-height: 100%;
+      display: block;
+      image-rendering: pixelated;
+    }
+    .file-row .file-name {
+      flex: 1;
+      font-size: 13px;
+      color: var(--text);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .file-row .file-size {
+      font-size: 11px;
+      color: var(--muted);
+      flex-shrink: 0;
+    }
+    .file-row .remove-btn {
+      background: none;
+      border: none;
+      color: var(--warn);
+      cursor: pointer;
+      font-size: 15px;
+      line-height: 1;
+      padding: 2px 6px;
+      border-radius: 4px;
+      flex-shrink: 0;
+      transition: background 0.12s ease;
+    }
+    .file-row .remove-btn:hover { background: rgba(203, 93, 103, 0.15); }
+
+    /* Buttons */
+    .btn-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 16px; }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 9px 18px;
+      border-radius: 8px;
+      border: 1px solid transparent;
+      font-size: 13px;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background 0.12s ease, border-color 0.12s ease;
+      white-space: nowrap;
+    }
+    .btn-primary {
+      background: var(--accent);
+      color: #0b1a17;
+      border-color: var(--accent);
+    }
+    .btn-primary:hover:not(:disabled) { background: var(--accent-strong); border-color: var(--accent-strong); }
+    .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-ghost {
+      background: transparent;
+      color: var(--muted);
+      border-color: var(--line);
+    }
+    .btn-ghost:hover { color: var(--text); border-color: var(--line-strong); }
+
+    /* Status / error */
+    .status-bar {
+      font-size: 13px;
+      margin-top: 12px;
+      min-height: 18px;
+    }
+    .status-bar.error { color: var(--warn); }
+    .status-bar.ok { color: var(--accent-strong); }
+
+    /* Preview grid */
+    .preview-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .preview-item {
+      background: var(--panel-soft);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px 12px;
+    }
+    .preview-item .preview-name {
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+    .preview-item .preview-canvas-wrap {
+      background: repeating-conic-gradient(#1e3040 0% 25%, transparent 0% 50%) 0 0 / 10px 10px;
+      border-radius: 6px;
+      overflow: hidden;
+      display: inline-block;
+      max-width: 100%;
+    }
+    .preview-item img {
+      display: block;
+      image-rendering: pixelated;
+      max-width: 100%;
+      height: auto;
+    }
+
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <a class="brand-link" href="/" title="PAD Labs Home">
+    <img src="/padlabs-icon.png" alt="PAD Labs Logo">
+  </a>
+  <h1>Non-Colored Outfits 160x160</h1>
+  <p class="subtitle">Upload up to 50 sprite sheets with 3 sprites on the top row and 1 on the bottom-left. Each sheet is rearranged into a single 4-sprite row (640x160). Multiple files are downloaded as a ZIP.</p>
+
+  <div class="panel">
+    <div class="panel-title">Upload Sprite Sheets</div>
+
+    <div class="drop-zone" id="dropZone">
+      <input type="file" id="fileInput" accept="image/*" multiple>
+      <div class="drop-label">Click to select files or drag and drop here</div>
+      <div class="drop-hint">PNG or any image format &mdash; 160x160 sprites &mdash; max 50 files</div>
+    </div>
+
+    <div class="file-list" id="fileList"></div>
+
+    <div class="btn-row">
+      <button class="btn btn-primary" id="processBtn" disabled>Process &amp; Download</button>
+      <button class="btn btn-ghost" id="clearBtn">Clear All</button>
+    </div>
+    <div class="status-bar" id="statusBar"></div>
+  </div>
+
+  <div class="panel hidden" id="previewPanel">
+    <div class="panel-title">Preview (output)</div>
+    <div class="preview-grid" id="previewGrid"></div>
+  </div>
+</div>
+
+<script>
+  const dropZone = document.getElementById('dropZone');
+  const fileInput = document.getElementById('fileInput');
+  const fileList = document.getElementById('fileList');
+  const processBtn = document.getElementById('processBtn');
+  const clearBtn = document.getElementById('clearBtn');
+  const statusBar = document.getElementById('statusBar');
+  const previewPanel = document.getElementById('previewPanel');
+  const previewGrid = document.getElementById('previewGrid');
+
+  // Ordered list of {file, name}
+  const MAX_FILES = 50;
+  let pendingFiles = [];
+
+  // ---- Drop zone interaction ----
+  dropZone.addEventListener('click', () => fileInput.click());
+
+  dropZone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    dropZone.classList.add('drag-over');
+  });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+  dropZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropZone.classList.remove('drag-over');
+    addFiles(Array.from(e.dataTransfer.files));
+  });
+
+  fileInput.addEventListener('change', () => {
+    addFiles(Array.from(fileInput.files));
+    fileInput.value = '';
+  });
+
+  function addFiles(newFiles) {
+    const imageFiles = newFiles.filter(f => f.type.startsWith('image/'));
+    imageFiles.forEach(f => {
+      // Avoid duplicates by name
+      if (!pendingFiles.some(p => p.name === f.name)) {
+        pendingFiles.push({ file: f, name: f.name });
+      }
+    });
+    if (pendingFiles.length > MAX_FILES) {
+      pendingFiles = pendingFiles.slice(0, MAX_FILES);
+      setStatus(`Maximum of ${MAX_FILES} files allowed. Extra files were ignored.`, 'error');
+    }
+    // Sort alphabetically
+    pendingFiles.sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()));
+    renderFileList();
+    setStatus('');
+  }
+
+  function renderFileList() {
+    fileList.innerHTML = '';
+    pendingFiles.forEach((item, idx) => {
+      const row = document.createElement('div');
+      row.className = 'file-row';
+
+      const thumbWrap = document.createElement('div');
+      thumbWrap.className = 'thumb-wrap';
+      const thumbImg = document.createElement('img');
+      const reader = new FileReader();
+      reader.onload = (e) => { thumbImg.src = e.target.result; };
+      reader.readAsDataURL(item.file);
+      thumbWrap.appendChild(thumbImg);
+
+      const nameEl = document.createElement('span');
+      nameEl.className = 'file-name';
+      nameEl.textContent = item.name;
+      nameEl.title = item.name;
+
+      const sizeEl = document.createElement('span');
+      sizeEl.className = 'file-size';
+      sizeEl.textContent = formatBytes(item.file.size);
+
+      const removeBtn = document.createElement('button');
+      removeBtn.className = 'remove-btn';
+      removeBtn.textContent = 'x';
+      removeBtn.title = 'Remove';
+      removeBtn.addEventListener('click', () => {
+        pendingFiles.splice(idx, 1);
+        renderFileList();
+      });
+
+      row.appendChild(thumbWrap);
+      row.appendChild(nameEl);
+      row.appendChild(sizeEl);
+      row.appendChild(removeBtn);
+      fileList.appendChild(row);
+    });
+
+    processBtn.disabled = pendingFiles.length === 0;
+  }
+
+  function formatBytes(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  }
+
+  function setStatus(msg, type) {
+    statusBar.textContent = msg;
+    statusBar.className = 'status-bar' + (type ? ' ' + type : '');
+  }
+
+  clearBtn.addEventListener('click', () => {
+    pendingFiles = [];
+    renderFileList();
+    previewPanel.classList.add('hidden');
+    previewGrid.innerHTML = '';
+    setStatus('');
+  });
+
+  // ---- Process ----
+  processBtn.addEventListener('click', async () => {
+    if (pendingFiles.length === 0) return;
+
+    processBtn.disabled = true;
+    setStatus('Processing...');
+    previewPanel.classList.add('hidden');
+    previewGrid.innerHTML = '';
+
+    const formData = new FormData();
+    // Send in already-sorted order; server also sorts alphabetically
+    pendingFiles.forEach(item => formData.append('files', item.file, item.name));
+
+    try {
+      const resp = await fetch('/api/noncolored/160/process', { method: 'POST', body: formData });
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({ error: resp.statusText }));
+        setStatus(err.error || 'Server error.', 'error');
+        return;
+      }
+
+      const blob = await resp.blob();
+      const contentDisposition = resp.headers.get('Content-Disposition') || '';
+      const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
+      const filename = filenameMatch ? filenameMatch[1] : 'output.png';
+
+      // Trigger download
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+
+      // Show previews from local data (client-side flatten for display only)
+      await renderPreviews();
+
+      setStatus(
+        pendingFiles.length === 1
+          ? 'Downloaded flat sprite sheet.'
+          : `Downloaded ZIP with ${pendingFiles.length} flat sprite sheets.`,
+        'ok'
+      );
+      setTimeout(() => URL.revokeObjectURL(url), 10000);
+    } catch (err) {
+      setStatus('Request failed: ' + err.message, 'error');
+    } finally {
+      processBtn.disabled = pendingFiles.length === 0;
+    }
+  });
+
+  async function renderPreviews() {
+    previewGrid.innerHTML = '';
+    const SS = 160;
+
+    for (const item of pendingFiles) {
+      const bmp = await createImageBitmap(item.file).catch(() => null);
+      if (!bmp) continue;
+
+      const outCanvas = document.createElement('canvas');
+      outCanvas.width = SS * 4;
+      outCanvas.height = SS;
+      const ctx = outCanvas.getContext('2d');
+
+      // Draw 3 top-row sprites
+      for (let col = 0; col < 3; col++) {
+        ctx.drawImage(bmp, col * SS, 0, SS, SS, col * SS, 0, SS, SS);
+      }
+      // Draw bottom-left sprite to 4th position
+      ctx.drawImage(bmp, 0, SS, SS, SS, SS * 3, 0, SS, SS);
+
+      const item_el = document.createElement('div');
+      item_el.className = 'preview-item';
+
+      const nameEl = document.createElement('div');
+      nameEl.className = 'preview-name';
+      nameEl.textContent = item.name;
+
+      const wrap = document.createElement('div');
+      wrap.className = 'preview-canvas-wrap';
+
+      const previewImg = document.createElement('img');
+      previewImg.src = outCanvas.toDataURL('image/png');
+      previewImg.style.width = Math.min(SS * 4, 640) + 'px';
+
+      wrap.appendChild(previewImg);
+      item_el.appendChild(nameEl);
+      item_el.appendChild(wrap);
+      previewGrid.appendChild(item_el);
+
+      bmp.close();
+    }
+
+    if (previewGrid.children.length > 0) {
+      previewPanel.classList.remove('hidden');
+    }
+  }
+</script>
+</body>
+</html>
